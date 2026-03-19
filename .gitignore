@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Database (local only)
+data/db.sqlite
+data/db.sqlite-shm
+data/db.sqlite-wal
+
+# Uploaded files (local only)
+data/uploads/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Editor
+.DS_Store
+.vscode/settings.json
