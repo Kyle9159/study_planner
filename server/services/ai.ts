@@ -64,6 +64,7 @@ export async function generateGuide(
   course: CourseDetail,
   guideType: "study" | "project",
   modelId: string,
+  options?: { minimalPass?: boolean },
 ): Promise<{ content: string; wasTruncated: boolean }> {
   const client = await getAiClient(modelId);
 
@@ -113,7 +114,7 @@ Rules:
 - materialExcerpts: pull actual relevant text from the uploaded materials in the prompt; include up to 2 per subject; omit the array entry if no relevant excerpt exists
 - searchQueries: 2-3 specific, useful queries a student would use to find study resources online
 - keyPoints: 3-6 actionable, specific, exam-ready points per subject
-- Use the rubric criteria to determine what is High priority`
+- Use the rubric criteria to determine what is High priority${options?.minimalPass ? "\n\nFocus only on minimal competent (B-level) mastery — prioritize exactly what the rubric requires to pass, skip nice-to-haves and advanced topics." : ""}`
       : `You are an academic project coach for a Masters student.
 Given the course materials and project rubric/instructions, generate a detailed step-by-step guide
 for completing the final project. Include:

@@ -42,6 +42,24 @@ export async function copyTextToClipboard(text: string): Promise<boolean> {
   }
 }
 
+export function formatRelativeTime(dateStr: string | null | undefined): string {
+  if (!dateStr) return "unknown time";
+  try {
+    const diffMs = Date.now() - new Date(dateStr).getTime();
+    const diffMins = Math.floor(diffMs / 60_000);
+    if (diffMins < 1) return "just now";
+    if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? "s" : ""} ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? "s" : ""} ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays === 1) return "yesterday";
+    if (diffDays < 7) return `${diffDays} days ago`;
+    return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  } catch {
+    return "unknown time";
+  }
+}
+
 export function extractYouTubeId(url: string): string | null {
   const patterns = [
     /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,

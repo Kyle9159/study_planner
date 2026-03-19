@@ -6,7 +6,8 @@ import { queryKeys } from "@/lib/queryKeys";
 export function useGenerateStudyGuideMutation(courseId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ model }: { model: string }) => api.generateStudyGuide(courseId, model),
+    mutationFn: ({ model, minimalPass }: { model: string; minimalPass?: boolean }) =>
+      api.generateStudyGuide(courseId, model, minimalPass ?? false),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.courses.detail(courseId) });
       toast.success("Study guide generated");

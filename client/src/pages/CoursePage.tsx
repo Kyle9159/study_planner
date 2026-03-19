@@ -308,9 +308,12 @@ export const CoursePage: React.FC = () => {
               <GuidePanel
                 guide={course.studyGuide}
                 isGenerating={generateStudy.isPending}
-                onGenerate={(model) => generateStudy.mutate({ model })}
+                onGenerate={(model, opts) =>
+                  generateStudy.mutate({ model, minimalPass: opts?.minimalPass ?? false })
+                }
                 guideType="study"
                 defaultModel={settings?.defaultModel ?? undefined}
+                courseName={course.name}
               />
             </SectionCard>
           </TabsContent>
@@ -327,6 +330,7 @@ export const CoursePage: React.FC = () => {
                 onGenerate={(model) => generateProject.mutate({ model })}
                 guideType="project"
                 defaultModel={settings?.defaultModel ?? undefined}
+                courseName={course.name}
               />
             </SectionCard>
           </TabsContent>

@@ -55,7 +55,7 @@ async function loadCourseDetail(courseId: string): Promise<CourseDetail | null> 
 aiRouter.post("/:id/generate-study-guide", async (req, res) => {
   try {
     const courseId = req.params.id;
-    const { model } = req.body as { model?: string };
+    const { model, minimalPass } = req.body as { model?: string; minimalPass?: boolean };
 
     // Fall back to default model from settings
     let modelId = model;
@@ -78,7 +78,7 @@ aiRouter.post("/:id/generate-study-guide", async (req, res) => {
       return;
     }
 
-    const { content, wasTruncated } = await generateGuide(course, "study", modelId);
+    const { content, wasTruncated } = await generateGuide(course, "study", modelId, { minimalPass: minimalPass ?? false });
 
     // Upsert (replace existing)
     const existing = await db

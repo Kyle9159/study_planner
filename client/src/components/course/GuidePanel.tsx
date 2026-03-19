@@ -1,28 +1,54 @@
 import {
   AlertTriangle,
   Check,
+  ChevronDown,
   Copy,
+  Download,
+  FileDown,
+  FileText,
   Loader2,
   RefreshCw,
   Sparkles,
 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { EmptyState } from "@/components/layout";
 import { ModelSelector } from "./ModelSelector";
 import { StudyGuideRenderer } from "./StudyGuideRenderer";
-import { copyTextToClipboard, formatDateTime } from "@/lib/utils";
-import type { StudyGuide, ProjectGuide } from "@shared/types";
+import { exportAnkiCsv, exportMarkdown, exportPdf } from "@/lib/export";
+import { copyTextToClipboard, formatDateTime, formatRelativeTime } from "@/lib/utils";
+import type { ProjectGuide, StudyGuide } from "@shared/types";
 
 interface GuidePanelProps {
   guide: StudyGuide | ProjectGuide | null;
   isGenerating: boolean;
-  onGenerate: (model: string) => void;
+  onGenerate: (model: string, options?: { minimalPass?: boolean }) => void;
   guideType: "study" | "project";
   defaultModel?: string;
+  courseName?: string;
 }
 
 export const GuidePanel: React.FC<GuidePanelProps> = ({
@@ -31,15 +57,30 @@ export const GuidePanel: React.FC<GuidePanelProps> = ({
   onGenerate,
   guideType,
   defaultModel,
+  courseName = "guide",
 }) => {
   const [selectedModel, setSelectedModel] = useState(
     guide?.model ?? defaultModel ?? "",
   );
   const [copied, setCopied] = useState(false);
+  const [minimalPass, setMinimalPass] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const pendingModel = useRef<string>("");
 
   const handleGenerate = () => {
     if (!selectedModel) return;
-    onGenerate(selectedModel);
+    if (guide) {
+      // existing guide — confirm before overwriting
+      pendingModel.current = selectedModel;
+      setConfirmOpen(true);
+    } else {
+      onGenerate(selectedModel, { minimalPass });
+    }
+  };
+
+  const handleConfirmRegenerate = () => {
+    onGenerate(pendingModel.current, { minimalPass });
+    setConfirmOpen(false);
   };
 
   const handleCopy = async () => {
@@ -90,21 +131,74 @@ export const GuidePanel: React.FC<GuidePanelProps> = ({
         </Button>
 
         {guide && (
-          <Button variant="outline" size="sm" onClick={handleCopy}>
-            {copied ? (
-              <>
-                <Check className="h-4 w-4 text-emerald-600" />
-                Copied!
-              </>
-            ) : (
-              <>
-                <Copy className="h-4 w-4" />
-                Copy
-              </>
-            )}
-          </Button>
+          <>
+            <Button variant="outline" size="sm" onClick={handleCopy}>
+              {copied ? (
+                <>
+                  <Check className="h-4 w-4 text-emerald-600" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4" />
+                  Copy
+                </>
+              )}
+            </Button>
+
+            {/* Export dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Download className="h-4 w-4" />
+                  Export
+                  <ChevronDown className="h-3 w-3 opacity-60" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuLabel>Export As</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => exportMarkdown(guide, courseName)}>
+                  <FileText className="h-4 w-4" />
+                  Markdown (.md)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportPdf(guide, courseName)}>
+                  <FileDown className="h-4 w-4" />
+                  PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => exportAnkiCsv(guide as StudyGuide, courseName)}
+                  disabled={guideType !== "study"}
+                >
+                  <FileDown className="h-4 w-4" />
+                  Anki Flashcards (.txt)
+                  {guideType !== "study" && (
+                    <span className="ml-auto text-xs text-muted-foreground">Study only</span>
+                  )}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </>
         )}
       </div>
+
+      {/* Minimal pass toggle — study guides only */}
+      {guideType === "study" && (
+        <div className="flex items-center gap-2.5">
+          <Switch
+            id="minimal-pass"
+            checked={minimalPass}
+            onCheckedChange={setMinimalPass}
+            disabled={isGenerating}
+          />
+          <Label htmlFor="minimal-pass" className="text-sm cursor-pointer select-none">
+            Minimal Pass Mode
+          </Label>
+          <span className="text-xs text-muted-foreground">
+            — focus only on B-level competency, skip nice-to-haves
+          </span>
+        </div>
+      )}
 
       {/* Guide content */}
       {guide ? (
@@ -119,7 +213,7 @@ export const GuidePanel: React.FC<GuidePanelProps> = ({
             </div>
           )}
           {guideType === "study" ? (
-            <StudyGuideRenderer content={guide.content} />
+            <StudyGuideRenderer content={guide.content} guideId={guide.id} />
           ) : (
             <div className="markdown-body">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{guide.content}</ReactMarkdown>
@@ -149,6 +243,26 @@ export const GuidePanel: React.FC<GuidePanelProps> = ({
           </div>
         </div>
       )}
+
+      {/* Regeneration confirmation dialog */}
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Regenerate {label}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Last generated{" "}
+              <strong>{formatRelativeTime(guide?.updatedAt)}</strong>. Regenerating
+              will overwrite the current guide and use API credits. Continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmRegenerate}>
+              Regenerate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

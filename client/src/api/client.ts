@@ -106,10 +106,10 @@ export const deleteRubric = (courseId: string, rubricId: string) =>
   fetchApi<null>(`/courses/${courseId}/rubrics/${rubricId}`, { method: "DELETE" });
 
 // AI Generation
-export const generateStudyGuide = (courseId: string, model: string) =>
+export const generateStudyGuide = (courseId: string, model: string, minimalPass = false) =>
   fetchApi<StudyGuide>(`/courses/${courseId}/generate-study-guide`, {
     method: "POST",
-    body: JSON.stringify({ model }),
+    body: JSON.stringify({ model, minimalPass }),
   });
 
 export const generateProjectGuide = (courseId: string, model: string) =>

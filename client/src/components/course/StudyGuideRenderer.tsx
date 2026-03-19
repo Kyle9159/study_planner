@@ -1,19 +1,90 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   BookOpen,
   ChevronDown,
   ChevronUp,
   ExternalLink,
   GraduationCap,
+  RotateCcw,
   Search,
   Youtube,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { StructuredStudyGuide, StudySubject } from "@shared/types";
 
-// ─── helpers ────────────────────────────────────────────────────────────────
+// ─── mastery persistence ─────────────────────────────────────────────────────
+
+type MasteryState = {
+  subjects: Record<string, boolean>;
+  keyPoints: Record<string, boolean>;
+};
+
+function loadMastery(guideId: string): MasteryState {
+  try {
+    const raw = localStorage.getItem(`mastery-${guideId}`);
+    if (raw) return JSON.parse(raw) as MasteryState;
+  } catch {
+    // ignore
+  }
+  return { subjects: {}, keyPoints: {} };
+}
+
+function saveMastery(guideId: string, state: MasteryState) {
+  try {
+    localStorage.setItem(`mastery-${guideId}`, JSON.stringify(state));
+  } catch {
+    // ignore
+  }
+}
+
+function useMastery(guideId: string | undefined) {
+  const [mastery, setMastery] = useState<MasteryState>(() =>
+    guideId ? loadMastery(guideId) : { subjects: {}, keyPoints: {} },
+  );
+
+  useEffect(() => {
+    if (guideId) setMastery(loadMastery(guideId));
+  }, [guideId]);
+
+  const toggleSubject = useCallback(
+    (id: string) => {
+      setMastery((prev) => {
+        const next = { ...prev, subjects: { ...prev.subjects, [id]: !prev.subjects[id] } };
+        if (guideId) saveMastery(guideId, next);
+        return next;
+      });
+    },
+    [guideId],
+  );
+
+  const toggleKeyPoint = useCallback(
+    (subjectId: string, index: number) => {
+      const key = `${subjectId}-${index}`;
+      setMastery((prev) => {
+        const next = { ...prev, keyPoints: { ...prev.keyPoints, [key]: !prev.keyPoints[key] } };
+        if (guideId) saveMastery(guideId, next);
+        return next;
+      });
+    },
+    [guideId],
+  );
+
+  const reset = useCallback(() => {
+    const empty: MasteryState = { subjects: {}, keyPoints: {} };
+    setMastery(empty);
+    if (guideId) saveMastery(guideId, empty);
+  }, [guideId]);
+
+  const masteredCount = Object.values(mastery.subjects).filter(Boolean).length;
+
+  return { mastery, toggleSubject, toggleKeyPoint, reset, masteredCount };
+}
+
+// ─── helpers ─────────────────────────────────────────────────────────────────
 
 function buildSearchLinks(query: string) {
   const enc = encodeURIComponent(query);
@@ -47,13 +118,7 @@ const PRIORITY_STYLES: Record<
 
 // ─── sub-components ──────────────────────────────────────────────────────────
 
-function ExcerptBlock({
-  sourceName,
-  excerpt,
-}: {
-  sourceName: string;
-  excerpt: string;
-}) {
+function ExcerptBlock({ sourceName, excerpt }: { sourceName: string; excerpt: string }) {
   return (
     <div className="rounded-lg border border-border/60 bg-muted/30 p-3">
       <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
@@ -109,7 +174,21 @@ function SearchRow({ query }: { query: string }) {
   );
 }
 
-function SubjectCard({ subject, index }: { subject: StudySubject; index: number }) {
+function SubjectCard({
+  subject,
+  index,
+  isSubjectMastered,
+  onToggleSubject,
+  isKeyPointMastered,
+  onToggleKeyPoint,
+}: {
+  subject: StudySubject;
+  index: number;
+  isSubjectMastered: boolean;
+  onToggleSubject: () => void;
+  isKeyPointMastered: (i: number) => boolean;
+  onToggleKeyPoint: (i: number) => void;
+}) {
   const [excerptOpen, setExcerptOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const styles = PRIORITY_STYLES[subject.priority];
@@ -118,16 +197,25 @@ function SubjectCard({ subject, index }: { subject: StudySubject; index: number 
 
   return (
     <div
-      className={`rounded-xl border border-l-4 border-border/60 bg-card/60 overflow-hidden ${styles.border}`}
+      className={`rounded-xl border border-l-4 border-border/60 bg-card/60 overflow-hidden transition-opacity ${styles.border} ${isSubjectMastered ? "opacity-50" : ""}`}
     >
       {/* Header */}
       <div className="flex items-start gap-3 p-4 pb-3">
-        <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
-          {index + 1}
-        </span>
+        <div className="mt-0.5 flex items-center gap-2 shrink-0">
+          <Checkbox
+            checked={isSubjectMastered}
+            onCheckedChange={onToggleSubject}
+            aria-label={`Mark ${subject.title} as mastered`}
+          />
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
+            {index + 1}
+          </span>
+        </div>
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-1">
-            <h3 className="text-sm font-semibold leading-tight">{subject.title}</h3>
+            <h3 className={`text-sm font-semibold leading-tight ${isSubjectMastered ? "line-through text-muted-foreground" : ""}`}>
+              {subject.title}
+            </h3>
             <span
               className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${styles.pill}`}
             >
@@ -139,13 +227,20 @@ function SubjectCard({ subject, index }: { subject: StudySubject; index: number 
         </div>
       </div>
 
-      {/* Key points */}
+      {/* Key points with checkboxes */}
       <div className="px-4 pb-3">
-        <ul className="space-y-1.5">
+        <ul className="space-y-2">
           {subject.keyPoints.map((pt, i) => (
-            <li key={i} className="flex gap-2 text-sm leading-snug">
-              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />
-              {pt}
+            <li key={i} className="flex items-start gap-2">
+              <Checkbox
+                checked={isKeyPointMastered(i)}
+                onCheckedChange={() => onToggleKeyPoint(i)}
+                className="mt-0.5 shrink-0"
+                aria-label={`Mark key point as done: ${pt}`}
+              />
+              <span className={`text-sm leading-snug ${isKeyPointMastered(i) ? "line-through text-muted-foreground" : ""}`}>
+                {pt}
+              </span>
             </li>
           ))}
         </ul>
@@ -206,17 +301,19 @@ function SubjectCard({ subject, index }: { subject: StudySubject; index: number 
   );
 }
 
-// ─── main renderer ───────────────────────────────────────────────────────────
+// ─── main renderer ────────────────────────────────────────────────────────────
 
 interface StudyGuideRendererProps {
   content: string;
+  guideId?: string;
 }
 
-export const StudyGuideRenderer: React.FC<StudyGuideRendererProps> = ({ content }) => {
+export const StudyGuideRenderer: React.FC<StudyGuideRendererProps> = ({ content, guideId }) => {
+  const { mastery, toggleSubject, toggleKeyPoint, reset, masteredCount } = useMastery(guideId);
+
   // Try to parse as structured JSON
   let parsed: StructuredStudyGuide | null = null;
   try {
-    // Strip any accidental markdown code fences from some models
     const cleaned = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
     const candidate = JSON.parse(cleaned) as unknown;
     if (
@@ -243,6 +340,7 @@ export const StudyGuideRenderer: React.FC<StudyGuideRendererProps> = ({ content 
   const highCount = parsed.subjects.filter((s) => s.priority === "High").length;
   const medCount = parsed.subjects.filter((s) => s.priority === "Medium").length;
   const lowCount = parsed.subjects.filter((s) => s.priority === "Low").length;
+  const totalSubjects = parsed.subjects.length;
 
   return (
     <div className="space-y-5">
@@ -250,13 +348,13 @@ export const StudyGuideRenderer: React.FC<StudyGuideRendererProps> = ({ content 
       <div className="rounded-xl border border-border/60 bg-gradient-to-br from-primary/5 to-primary/10 p-4">
         <div className="flex items-start gap-3">
           <GraduationCap className="h-5 w-5 shrink-0 text-primary mt-0.5" />
-          <div>
+          <div className="flex-1 min-w-0">
             <p className="text-sm font-medium mb-1">Study Guide Overview</p>
             <p className="text-sm text-muted-foreground leading-relaxed">{parsed.overview}</p>
           </div>
         </div>
-        {/* Priority summary */}
-        <div className="mt-3 flex flex-wrap gap-2 text-xs">
+        {/* Priority + mastery summary */}
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
           {highCount > 0 && (
             <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-red-700 dark:bg-red-900/30 dark:text-red-400">
               <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
@@ -275,13 +373,37 @@ export const StudyGuideRenderer: React.FC<StudyGuideRendererProps> = ({ content 
               {lowCount} Low
             </span>
           )}
+          {masteredCount > 0 && (
+            <Badge variant="secondary" className="ml-auto text-xs">
+              {masteredCount}/{totalSubjects} mastered
+            </Badge>
+          )}
+          {masteredCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={reset}
+              className="h-6 px-2 text-xs text-muted-foreground"
+            >
+              <RotateCcw className="h-3 w-3" />
+              Reset
+            </Button>
+          )}
         </div>
       </div>
 
       {/* Subject cards */}
       <div className="space-y-3">
         {parsed.subjects.map((subject, i) => (
-          <SubjectCard key={subject.id ?? i} subject={subject} index={i} />
+          <SubjectCard
+            key={subject.id ?? i}
+            subject={subject}
+            index={i}
+            isSubjectMastered={!!mastery.subjects[subject.id ?? String(i)]}
+            onToggleSubject={() => toggleSubject(subject.id ?? String(i))}
+            isKeyPointMastered={(ki) => !!mastery.keyPoints[`${subject.id ?? i}-${ki}`]}
+            onToggleKeyPoint={(ki) => toggleKeyPoint(subject.id ?? String(i), ki)}
+          />
         ))}
       </div>
     </div>
