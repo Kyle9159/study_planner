@@ -1,0 +1,157 @@
+# Study Planner
+
+A full-stack web app for managing Masters Degree coursework. Upload course materials, rubrics, and lecture videos — then use AI to generate focused study guides and project completion guides tailored to your grading criteria.
+
+---
+
+## Features
+
+- **Per-course organization** — add courses with name, code, semester, instructor, and description
+- **Material uploads** — PDF, DOCX, TXT files and YouTube video links (auto-transcribed)
+- **Rubric uploads** — upload project instructions and grading rubrics separately
+- **AI Study Guide** — structured guide broken down by subject with priority rankings (High / Medium / Low), key points, excerpts from your uploaded materials, and one-click search links (DuckDuckGo, Google Scholar, YouTube)
+- **AI Project Guide** — step-by-step project completion guide mapped to rubric criteria
+- **Multi-provider AI** — works with xAI (Grok) and GitHub Models (GPT-4o, Claude, Gemini, and more)
+- **Model selector** — choose any supported model per generation with a configurable default
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React 18 + TypeScript + Vite 6 |
+| Routing | React Router v7 |
+| Backend | Express.js |
+| Database | SQLite + Drizzle ORM (`better-sqlite3`) |
+| Styling | TailwindCSS v4 + OkLCh color tokens |
+| Components | shadcn/ui |
+| Forms | React Hook Form + Zod |
+| Server state | TanStack Query v5 |
+| AI | `openai` npm package with custom `baseURL` |
+| Doc parsing | `pdf-parse`, `mammoth`, `youtube-transcript` |
+| File uploads | `multer` |
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 20+ (via [nvm](https://github.com/nvm-sh/nvm) recommended)
+- An xAI API key **or** a GitHub Personal Access Token (for AI features)
+
+### Installation
+
+```bash
+git clone https://github.com/Kyle9159/study_planner.git
+cd study_planner
+npm install
+npm run db:migrate
+npm run dev
+```
+
+The app will be available at `http://localhost:5173`. The Express API runs on port 3001 (proxied automatically by Vite).
+
+---
+
+## Configuration
+
+Open **Settings** in the app to configure your AI provider:
+
+### xAI (Grok models)
+
+1. Get an API key from [x.ai](https://x.ai)
+2. Paste it into the **xAI API Key** field in Settings
+
+### GitHub Models (GPT-4o, Claude, Gemini, and more)
+
+1. Go to [github.com/settings/tokens](https://github.com/settings/tokens)
+2. Generate a new token (classic) — no special scopes required
+3. Paste it into the **GitHub Token** field in Settings
+
+> GitHub Models provides free access to a wide range of models including GPT-4o, GPT-4o mini, Claude Sonnet, Gemini, and Grok through an OpenAI-compatible API.
+
+---
+
+## Supported Models
+
+| Provider | Models |
+|---|---|
+| xAI | `grok-4-1-fast-reasoning`, `grok-4-1-fast-non-reasoning` |
+| GitHub Models | `gpt-4o`, `gpt-4o-mini`, `grok-4-1-fast-reasoning`, `grok-4-1-fast-non-reasoning`, `grok-code-fast-1`, `claude-sonnet-4-6`, `gpt-5.4`, `gemini-3-1-pro` |
+
+---
+
+## Usage
+
+### Adding a Course
+
+1. Click **New Course** on the dashboard
+2. Fill in the course name, code, semester, year, and optionally instructor and description
+3. Click **Create Course**
+
+### Uploading Materials
+
+On the course page, use the **Materials** tab to upload:
+- Lecture notes, textbooks, or course guides (PDF, DOCX, TXT)
+- YouTube lecture links (transcript is fetched automatically)
+
+Use the **Rubric** tab to upload your project instructions and grading rubric.
+
+### Generating a Study Guide
+
+1. Go to the **Study Guide** tab on a course page
+2. Select a model from the dropdown
+3. Click **Generate Study Guide**
+
+The AI will analyze all uploaded materials and the rubric, then produce a structured guide with:
+- An overview of key focus areas
+- Subject cards ranked by priority (High / Medium / Low)
+- Actionable key points per subject
+- Excerpts from your uploaded documents under each subject
+- One-click search links to DuckDuckGo, Google Scholar, and YouTube for each topic
+
+### Generating a Project Guide
+
+Go to the **Project Guide** tab and click **Generate Project Guide**. The AI produces a step-by-step completion guide mapped to the rubric criteria, including common pitfalls and a suggested timeline.
+
+---
+
+## Scripts
+
+| Command | Description |
+|---|---|
+| `npm run dev` | Start both the Vite dev server and Express API |
+| `npm run db:migrate` | Create/migrate the SQLite database |
+| `npm run build:client` | Build the frontend for production |
+| `npm start` | Run the production Express server |
+
+---
+
+## Project Structure
+
+```
+study_planner/
+├── client/src/
+│   ├── pages/           # DashboardPage, CoursePage, NewCoursePage, SettingsPage
+│   ├── components/
+│   │   ├── course/      # CourseCard, GuidePanel, StudyGuideRenderer, UploadZone, MaterialList, ModelSelector
+│   │   └── ui/          # shadcn/ui components
+│   ├── hooks/queries/   # TanStack Query hooks
+│   └── api/client.ts    # Typed API client
+├── server/
+│   ├── api/routes/      # courses, materials, ai, settings
+│   ├── db/              # Drizzle schema, migrations, connection
+│   └── services/        # AI generation, text extraction
+├── shared/types.ts      # Shared TypeScript types
+└── data/                # SQLite DB + uploaded files (local only, gitignored)
+```
+
+---
+
+## Notes
+
+- Uploaded files and the SQLite database are stored locally in `data/` and are not committed to the repository
+- API keys are stored in the local database and never exposed — the settings API returns `"configured"` or `null`, never the actual key value
+- Text is truncated before sending to the AI (8,000 chars per file, 60,000 chars total) to stay within model context limits
