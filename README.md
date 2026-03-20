@@ -6,13 +6,40 @@ A full-stack web app for managing Masters Degree coursework. Upload course mater
 
 ## Features
 
-- **Per-course organization** — add courses with name, code, semester, instructor, and description
-- **Material uploads** — PDF, DOCX, TXT files and YouTube video links (auto-transcribed)
-- **Rubric uploads** — upload project instructions and grading rubrics separately
-- **AI Study Guide** — structured guide broken down by subject with priority rankings (High / Medium / Low), key points, excerpts from your uploaded materials, and one-click search links (DuckDuckGo, Google Scholar, YouTube)
-- **AI Project Guide** — step-by-step project completion guide mapped to rubric criteria
-- **Multi-provider AI** — works with xAI (Grok) and GitHub Models (GPT-4o, Claude, Gemini, and more)
-- **Model selector** — choose any supported model per generation with a configurable default
+### Course Management
+- **Per-course organization** — add courses with name, code, semester, year, instructor, and description
+- **Material uploads** — PDF, DOCX, TXT files and YouTube video links (transcript auto-fetched)
+- **Rubric uploads** — upload project instructions and grading rubrics separately from study materials
+
+### AI Study Guide
+Generates a structured, interactive guide from your uploaded content:
+- Overview summary of key focus areas
+- Subject cards ranked by **priority** (High / Medium / Low) based on rubric criteria
+- Actionable key points per subject
+- Source excerpts pulled directly from your uploaded documents
+- One-click search links to DuckDuckGo, Google Scholar, and YouTube for each topic
+- **Minimal Pass Mode** — toggle to focus the AI only on B-level competency, skipping nice-to-haves (great for time-constrained studying)
+
+### AI Project Guide
+Step-by-step completion guide mapped directly to rubric criteria, including common pitfalls and a suggested timeline.
+
+### Mastery Checklist
+- Check off subjects and individual key points as you study
+- Progress persists across sessions (stored in localStorage per guide)
+- Visual dimming and strikethrough on completed items
+- "X/Y mastered" counter in the overview card with a Reset button
+
+### Export
+Export any guide in multiple formats:
+- **Markdown** (`.md`) — clean, readable text version of the full guide
+- **PDF** — formatted document with priority-colored subject sections
+- **Anki Flashcards** (`.txt`) — tab-separated front/back cards importable directly into Anki; great for OA prep
+
+### Regeneration Guard
+Clicking Regenerate on an existing guide shows a confirmation dialog with "Last generated X ago" so you don't accidentally waste API credits.
+
+### Multi-Provider AI
+Works with xAI (Grok) and GitHub Models (GPT-4o, Claude, Gemini, and more). Choose any supported model per generation with a configurable default.
 
 ---
 
@@ -31,6 +58,7 @@ A full-stack web app for managing Masters Degree coursework. Upload course mater
 | AI | `openai` npm package with custom `baseURL` |
 | Doc parsing | `pdf-parse`, `mammoth`, `youtube-transcript` |
 | File uploads | `multer` |
+| PDF export | `jsPDF` |
 
 ---
 
@@ -102,15 +130,18 @@ Use the **Rubric** tab to upload your project instructions and grading rubric.
 ### Generating a Study Guide
 
 1. Go to the **Study Guide** tab on a course page
-2. Select a model from the dropdown
-3. Click **Generate Study Guide**
+2. Optionally enable **Minimal Pass Mode** if you only need to hit competency requirements
+3. Select a model from the dropdown
+4. Click **Generate Study Guide**
 
-The AI will analyze all uploaded materials and the rubric, then produce a structured guide with:
-- An overview of key focus areas
-- Subject cards ranked by priority (High / Medium / Low)
-- Actionable key points per subject
-- Excerpts from your uploaded documents under each subject
-- One-click search links to DuckDuckGo, Google Scholar, and YouTube for each topic
+The guide is broken down by subject with priority rankings, key points, material excerpts, and search links. Check off topics as you study — progress is saved automatically.
+
+### Exporting a Guide
+
+Once a guide is generated, click the **Export** button and choose:
+- **Markdown** — save as a `.md` file for notes apps, Obsidian, etc.
+- **PDF** — formatted document ready to print or share
+- **Anki Flashcards** — import the `.txt` file into Anki (File → Import) to create flashcard decks from your key points
 
 ### Generating a Project Guide
 
@@ -134,18 +165,20 @@ Go to the **Project Guide** tab and click **Generate Project Guide**. The AI pro
 ```
 study_planner/
 ├── client/src/
-│   ├── pages/           # DashboardPage, CoursePage, NewCoursePage, SettingsPage
+│   ├── pages/             # DashboardPage, CoursePage, NewCoursePage, SettingsPage
 │   ├── components/
-│   │   ├── course/      # CourseCard, GuidePanel, StudyGuideRenderer, UploadZone, MaterialList, ModelSelector
-│   │   └── ui/          # shadcn/ui components
-│   ├── hooks/queries/   # TanStack Query hooks
-│   └── api/client.ts    # Typed API client
+│   │   ├── course/        # CourseCard, GuidePanel, StudyGuideRenderer, UploadZone,
+│   │   │                  #   MaterialList, ModelSelector
+│   │   └── ui/            # shadcn/ui components
+│   ├── hooks/queries/     # TanStack Query hooks
+│   ├── lib/               # utils, export helpers, query client
+│   └── api/client.ts      # Typed API client
 ├── server/
-│   ├── api/routes/      # courses, materials, ai, settings
-│   ├── db/              # Drizzle schema, migrations, connection
-│   └── services/        # AI generation, text extraction
-├── shared/types.ts      # Shared TypeScript types
-└── data/                # SQLite DB + uploaded files (local only, gitignored)
+│   ├── api/routes/        # courses, materials, ai, settings
+│   ├── db/                # Drizzle schema, migrations, connection
+│   └── services/          # AI generation, text extraction
+├── shared/types.ts        # Shared TypeScript types
+└── data/                  # SQLite DB + uploaded files (local only, gitignored)
 ```
 
 ---
@@ -155,3 +188,4 @@ study_planner/
 - Uploaded files and the SQLite database are stored locally in `data/` and are not committed to the repository
 - API keys are stored in the local database and never exposed — the settings API returns `"configured"` or `null`, never the actual key value
 - Text is truncated before sending to the AI (8,000 chars per file, 60,000 chars total) to stay within model context limits
+- Mastery checklist state is stored in the browser's `localStorage` and is not synced across devices
