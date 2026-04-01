@@ -44,7 +44,7 @@ const migrations = [
     filename TEXT NOT NULL,
     original_name TEXT NOT NULL,
     file_path TEXT,
-    file_type TEXT NOT NULL CHECK(file_type IN ('pdf', 'docx', 'txt', 'image', 'youtube')),
+    file_type TEXT NOT NULL CHECK(file_type IN ('pdf', 'docx', 'txt', 'image', 'youtube', 'webpage')),
     extracted_text TEXT,
     extraction_failed INTEGER NOT NULL DEFAULT 0,
     url TEXT,
@@ -58,7 +58,7 @@ const migrations = [
     filename TEXT NOT NULL,
     original_name TEXT NOT NULL,
     file_path TEXT,
-    file_type TEXT NOT NULL CHECK(file_type IN ('pdf', 'docx', 'txt', 'image', 'youtube')),
+    file_type TEXT NOT NULL CHECK(file_type IN ('pdf', 'docx', 'txt', 'image', 'youtube', 'webpage')),
     extracted_text TEXT,
     extraction_failed INTEGER NOT NULL DEFAULT 0,
     url TEXT,
@@ -98,16 +98,66 @@ const migrations = [
   `CREATE INDEX IF NOT EXISTS idx_rubrics_course_id ON rubrics(course_id)`,
   `CREATE INDEX IF NOT EXISTS idx_study_guides_course_id ON study_guides(course_id)`,
   `CREATE INDEX IF NOT EXISTS idx_project_guides_course_id ON project_guides(course_id)`,
+
+  // Upgrade materials + rubrics to support 'webpage' file type.
+  // Recreates the tables only if 'webpage' is not yet in the CHECK constraint.
+  () => {
+    const matSql = (sqlite.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='materials'").get() as { sql: string } | undefined)?.sql ?? "";
+    if (matSql.includes("'webpage'")) return;
+    sqlite.exec(`ALTER TABLE materials RENAME TO _materials_old`);
+    sqlite.exec(`CREATE TABLE materials (
+      id TEXT PRIMARY KEY,
+      course_id TEXT NOT NULL,
+      filename TEXT NOT NULL,
+      original_name TEXT NOT NULL,
+      file_path TEXT,
+      file_type TEXT NOT NULL CHECK(file_type IN ('pdf', 'docx', 'txt', 'image', 'youtube', 'webpage')),
+      extracted_text TEXT,
+      extraction_failed INTEGER NOT NULL DEFAULT 0,
+      url TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+    )`);
+    sqlite.exec(`INSERT INTO materials SELECT * FROM _materials_old`);
+    sqlite.exec(`DROP TABLE _materials_old`);
+    sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_materials_course_id ON materials(course_id)`);
+  },
+  () => {
+    const rubSql = (sqlite.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='rubrics'").get() as { sql: string } | undefined)?.sql ?? "";
+    if (rubSql.includes("'webpage'")) return;
+    sqlite.exec(`ALTER TABLE rubrics RENAME TO _rubrics_old`);
+    sqlite.exec(`CREATE TABLE rubrics (
+      id TEXT PRIMARY KEY,
+      course_id TEXT NOT NULL,
+      filename TEXT NOT NULL,
+      original_name TEXT NOT NULL,
+      file_path TEXT,
+      file_type TEXT NOT NULL CHECK(file_type IN ('pdf', 'docx', 'txt', 'image', 'youtube', 'webpage')),
+      extracted_text TEXT,
+      extraction_failed INTEGER NOT NULL DEFAULT 0,
+      url TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+    )`);
+    sqlite.exec(`INSERT INTO rubrics SELECT * FROM _rubrics_old`);
+    sqlite.exec(`DROP TABLE _rubrics_old`);
+    sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_rubrics_course_id ON rubrics(course_id)`);
+  },
 ];
 
 console.log("Running database migrations...");
 
 for (const migration of migrations) {
   try {
-    sqlite.exec(migration);
+    if (typeof migration === "function") {
+      migration();
+    } else {
+      sqlite.exec(migration);
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const isDuplicateColumn =
+      typeof migration === "string" &&
       migration.toLowerCase().includes("alter table") &&
       message.toLowerCase().includes("duplicate column name");
     if (isDuplicateColumn) {

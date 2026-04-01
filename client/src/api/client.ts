@@ -89,6 +89,12 @@ export const addYouTubeMaterial = (courseId: string, url: string) =>
     body: JSON.stringify({ url, fileType: "youtube" }),
   });
 
+export const addWebpageMaterial = (courseId: string, url: string) =>
+  fetchApi<Material>(`/courses/${courseId}/materials`, {
+    method: "POST",
+    body: JSON.stringify({ url, fileType: "webpage" }),
+  });
+
 export const deleteMaterial = (courseId: string, materialId: string) =>
   fetchApi<null>(`/courses/${courseId}/materials/${materialId}`, { method: "DELETE" });
 
@@ -100,6 +106,12 @@ export const addYouTubeRubric = (courseId: string, url: string) =>
   fetchApi<Rubric>(`/courses/${courseId}/rubrics`, {
     method: "POST",
     body: JSON.stringify({ url, fileType: "youtube" }),
+  });
+
+export const addWebpageRubric = (courseId: string, url: string) =>
+  fetchApi<Rubric>(`/courses/${courseId}/rubrics`, {
+    method: "POST",
+    body: JSON.stringify({ url, fileType: "webpage" }),
   });
 
 export const deleteRubric = (courseId: string, rubricId: string) =>
@@ -121,5 +133,5 @@ export const generateProjectGuide = (courseId: string, model: string) =>
 // Settings
 export const getSettings = () => fetchApi<AppSettings>("/settings");
 
-export const updateSettings = (data: Partial<AppSettings & { xaiApiKey: string; githubToken: string }>) =>
+export const updateSettings = (data: Partial<AppSettings & { xaiApiKey: string; githubToken: string; wguSessionCookie: string }>) =>
   fetchApi<AppSettings>("/settings", { method: "PUT", body: JSON.stringify(data) });

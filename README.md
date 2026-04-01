@@ -56,7 +56,7 @@ Works with xAI (Grok) and GitHub Models (GPT-4o, Claude, Gemini, and more). Choo
 | Forms | React Hook Form + Zod |
 | Server state | TanStack Query v5 |
 | AI | `openai` npm package with custom `baseURL` |
-| Doc parsing | `pdf-parse`, `mammoth`, `youtube-transcript` |
+| Doc parsing | `pdf-parse`, `mammoth`, `youtube-transcript`, `cheerio` |
 | File uploads | `multer` |
 | PDF export | `jsPDF` |
 
@@ -92,7 +92,20 @@ Open **Settings** in the app to configure your AI provider:
 1. Get an API key from [x.ai](https://x.ai)
 2. Paste it into the **xAI API Key** field in Settings
 
-### GitHub Models (GPT-4o, Claude, Gemini, and more)
+### WGU Course Pages (Session Cookie)
+
+WGU's learning portal requires login with MFA, so automated login is not possible. Instead, the app uses your browser session cookie:
+
+1. Log into WGU normally in your browser (with MFA as usual)
+2. Open DevTools (`F12`) → **Application** tab → **Cookies** → `apps.cgp-oex.wgu.edu`
+3. Copy the `sessionid` cookie value (or the full cookie string)
+4. Paste it into the **WGU Session Cookie** field in Settings
+
+Once configured, paste any WGU course page URL into the **WGU Course URL** input on the Materials tab. The app will fetch the page with your session cookie and extract the visible text content using `cheerio`.
+
+> **Note:** The session cookie expires when you log out of WGU or after a long idle period. If extraction fails with a "session expired" error, update your cookie in Settings. Some JavaScript-rendered content may not be captured since the app uses server-rendered HTML only.
+
+
 
 1. Go to [github.com/settings/tokens](https://github.com/settings/tokens)
 2. Generate a new token (classic) — no special scopes required

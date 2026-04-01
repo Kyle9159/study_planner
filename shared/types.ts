@@ -2,7 +2,7 @@
 // Shared types between client and server
 // ============================================================================
 
-export type FileType = "pdf" | "docx" | "txt" | "image" | "youtube";
+export type FileType = "pdf" | "docx" | "txt" | "image" | "youtube" | "webpage";
 
 export type Provider = "xai" | "github";
 
@@ -100,6 +100,7 @@ export type AppSettings = {
   xaiApiKey: string | null;
   githubToken: string | null;
   defaultModel: string | null;
+  wguSessionCookie: string | null;
 };
 
 export type CourseDetail = Course & {

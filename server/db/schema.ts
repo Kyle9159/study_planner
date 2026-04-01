@@ -26,7 +26,7 @@ export const materials = sqliteTable("materials", {
   originalName: text("original_name").notNull(),
   filePath: text("file_path"),
   fileType: text("file_type", {
-    enum: ["pdf", "docx", "txt", "image", "youtube"],
+    enum: ["pdf", "docx", "txt", "image", "youtube", "webpage"],
   }).notNull(),
   extractedText: text("extracted_text"),
   extractionFailed: integer("extraction_failed", { mode: "boolean" })
@@ -47,7 +47,7 @@ export const rubrics = sqliteTable("rubrics", {
   originalName: text("original_name").notNull(),
   filePath: text("file_path"),
   fileType: text("file_type", {
-    enum: ["pdf", "docx", "txt", "image", "youtube"],
+    enum: ["pdf", "docx", "txt", "image", "youtube", "webpage"],
   }).notNull(),
   extractedText: text("extracted_text"),
   extractionFailed: integer("extraction_failed", { mode: "boolean" })

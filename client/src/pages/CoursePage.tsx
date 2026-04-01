@@ -56,6 +56,8 @@ import { useGenerateProjectGuideMutation, useGenerateStudyGuideMutation } from "
 import {
   useAddYouTubeMaterialMutation,
   useAddYouTubeRubricMutation,
+  useAddWebpageMaterialMutation,
+  useAddWebpageRubricMutation,
   useDeleteMaterialMutation,
   useDeleteRubricMutation,
   useUploadMaterialMutation,
@@ -88,9 +90,11 @@ export const CoursePage: React.FC = () => {
   const deleteMutation = useDeleteCourseMutation();
   const uploadMaterial = useUploadMaterialMutation(id!);
   const addYoutubeMaterial = useAddYouTubeMaterialMutation(id!);
+  const addWebpageMaterial = useAddWebpageMaterialMutation(id!);
   const deleteMaterial = useDeleteMaterialMutation(id!);
   const uploadRubric = useUploadRubricMutation(id!);
   const addYoutubeRubric = useAddYouTubeRubricMutation(id!);
+  const addWebpageRubric = useAddWebpageRubricMutation(id!);
   const deleteRubric = useDeleteRubricMutation(id!);
   const generateStudy = useGenerateStudyGuideMutation(id!);
   const generateProject = useGenerateProjectGuideMutation(id!);
@@ -260,7 +264,10 @@ export const CoursePage: React.FC = () => {
                   onYouTube={async (url) => {
                     await addYoutubeMaterial.mutateAsync(url);
                   }}
-                  isUploading={uploadMaterial.isPending || addYoutubeMaterial.isPending}
+                  onWebpage={async (url) => {
+                    await addWebpageMaterial.mutateAsync(url);
+                  }}
+                  isUploading={uploadMaterial.isPending || addYoutubeMaterial.isPending || addWebpageMaterial.isPending}
                   label="Upload study materials"
                 />
                 <MaterialList
@@ -287,7 +294,10 @@ export const CoursePage: React.FC = () => {
                   onYouTube={async (url) => {
                     await addYoutubeRubric.mutateAsync(url);
                   }}
-                  isUploading={uploadRubric.isPending || addYoutubeRubric.isPending}
+                  onWebpage={async (url) => {
+                    await addWebpageRubric.mutateAsync(url);
+                  }}
+                  isUploading={uploadRubric.isPending || addYoutubeRubric.isPending || addWebpageRubric.isPending}
                   label="Upload rubric / instructions"
                 />
                 <MaterialList

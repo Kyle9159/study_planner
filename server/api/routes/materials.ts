@@ -116,6 +116,63 @@ async function handleFileUpload(
     return;
   }
 
+  // WGU webpage URL path (JSON body)
+  if (!file && req.body?.fileType === "webpage") {
+    const { url } = req.body as { url: string; fileType: "webpage" };
+    if (!url) {
+      res.status(400).json({ ok: false, error: "url is required for webpage type" });
+      return;
+    }
+
+    const wguCookieRow = await db
+      .select()
+      .from(schema.settings)
+      .where(eq(schema.settings.key, "wguSessionCookie"))
+      .get();
+    const wguCookie = wguCookieRow?.value ?? undefined;
+
+    const id = createId();
+    let extractedText: string | null = null;
+    let extractionFailed = false;
+
+    try {
+      extractedText = await extractText("webpage", null, url, { wguCookie });
+    } catch {
+      extractionFailed = true;
+    }
+
+    const row = {
+      id,
+      courseId,
+      filename: url,
+      originalName: url,
+      filePath: null,
+      fileType: "webpage" as FileType,
+      extractedText,
+      extractionFailed,
+      url,
+    };
+
+    if (table === "materials") {
+      await db.insert(schema.materials).values(row);
+      const inserted = await db
+        .select()
+        .from(schema.materials)
+        .where(eq(schema.materials.id, id))
+        .get();
+      res.status(201).json({ ok: true, data: inserted, extractionFailed });
+    } else {
+      await db.insert(schema.rubrics).values(row);
+      const inserted = await db
+        .select()
+        .from(schema.rubrics)
+        .where(eq(schema.rubrics.id, id))
+        .get();
+      res.status(201).json({ ok: true, data: inserted, extractionFailed });
+    }
+    return;
+  }
+
   if (!file) {
     res.status(400).json({ ok: false, error: "No file uploaded" });
     return;

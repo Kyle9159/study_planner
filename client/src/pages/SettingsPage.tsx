@@ -3,6 +3,12 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { PageHeader, PageMain, SectionCard } from "@/components/layout";
 import { ModelSelector } from "@/components/course/ModelSelector";
 import { useSettings, useUpdateSettingsMutation } from "@/hooks/queries/useSettingsQueries";
@@ -44,6 +50,7 @@ export const SettingsPage: React.FC = () => {
 
   const [xaiKey, setXaiKey] = useState("");
   const [githubToken, setGithubToken] = useState("");
+  const [wguCookie, setWguCookie] = useState("");
   const [defaultModel, setDefaultModel] = useState("");
 
   const handleSaveXai = () => {
@@ -65,6 +72,13 @@ export const SettingsPage: React.FC = () => {
 
   const handleClearXai = () => updateMutation.mutate({ xaiApiKey: "" });
   const handleClearGithub = () => updateMutation.mutate({ githubToken: "" });
+
+  const handleSaveWguCookie = () => {
+    if (!wguCookie.trim()) return;
+    updateMutation.mutate({ wguSessionCookie: wguCookie.trim() });
+    setWguCookie("");
+  };
+  const handleClearWguCookie = () => updateMutation.mutate({ wguSessionCookie: "" });
 
   if (isLoading) {
     return (
@@ -186,6 +200,72 @@ export const SettingsPage: React.FC = () => {
                     variant="outline"
                     size="sm"
                     onClick={handleClearGithub}
+                    disabled={updateMutation.isPending}
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </SectionCard>
+
+        {/* WGU Session Cookie */}
+        <SectionCard
+          title="WGU Session Cookie"
+          description="Required to scrape WGU course pages. Log into WGU in your browser, then copy your session cookie from DevTools and paste it here."
+        >
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-muted-foreground">Status:</span>
+              {settings?.wguSessionCookie ? (
+                <span className="text-emerald-600 font-medium">Configured</span>
+              ) : (
+                <span className="text-muted-foreground">Not configured</span>
+              )}
+            </div>
+            <Accordion type="single" collapsible>
+              <AccordionItem value="how-to" className="border-border/60">
+                <AccordionTrigger className="text-xs text-muted-foreground py-1 hover:no-underline">
+                  How to find your session cookie
+                </AccordionTrigger>
+                <AccordionContent className="text-xs text-muted-foreground space-y-1 pb-2">
+                  <p><strong>Chrome / Edge:</strong> F12 → Application → Cookies → apps.cgp-oex.wgu.edu → copy the <code className="font-mono bg-muted/60 rounded px-1">sessionid</code> value</p>
+                  <p><strong>Firefox:</strong> F12 → Storage → Cookies → copy <code className="font-mono bg-muted/60 rounded px-1">sessionid</code></p>
+                  <p><strong>Safari:</strong> Develop → Show Web Inspector → Storage → Cookies</p>
+                  <p className="pt-1">Paste the full cookie string (e.g. <code className="font-mono bg-muted/60 rounded px-1">sessionid=abc123...</code>) below. The cookie expires when you log out of WGU.</p>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+            <div className="flex gap-2">
+              <div className="flex-1 space-y-1">
+                <Label htmlFor="wguCookie">Session Cookie</Label>
+                <MaskedInput
+                  id="wguCookie"
+                  value={wguCookie}
+                  onChange={setWguCookie}
+                  placeholder="sessionid=..."
+                  disabled={updateMutation.isPending}
+                />
+              </div>
+              <div className="flex items-end gap-2">
+                <Button
+                  onClick={handleSaveWguCookie}
+                  disabled={!wguCookie.trim() || updateMutation.isPending}
+                  size="sm"
+                >
+                  {updateMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  Save
+                </Button>
+                {settings?.wguSessionCookie && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleClearWguCookie}
                     disabled={updateMutation.isPending}
                   >
                     Clear

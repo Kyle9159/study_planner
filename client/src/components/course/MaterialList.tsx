@@ -4,10 +4,12 @@ import {
   ChevronRight,
   FileImage,
   FileText,
+  Globe,
   Trash2,
   Youtube,
 } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -21,6 +23,7 @@ const FILE_TYPE_ICONS: Record<string, React.FC<{ className?: string }>> = {
   txt: FileText,
   image: FileImage,
   youtube: Youtube,
+  webpage: Globe,
 };
 
 const FILE_TYPE_LABELS: Record<string, string> = {
@@ -29,6 +32,7 @@ const FILE_TYPE_LABELS: Record<string, string> = {
   txt: "TXT",
   image: "Image",
   youtube: "YouTube",
+  webpage: "WGU Page",
 };
 
 interface MaterialItemProps {
@@ -52,12 +56,20 @@ const MaterialItem: React.FC<MaterialItemProps> = ({ item, onDelete, isDeleting 
             <Badge variant="outline" className="text-xs shrink-0">
               {FILE_TYPE_LABELS[item.fileType]}
             </Badge>
-            {item.extractionFailed && (
+            {item.extractionFailed && item.fileType === "webpage" ? (
+              <div className="flex items-center gap-1 text-xs text-amber-600">
+                <AlertCircle className="h-3.5 w-3.5" />
+                Session expired —{" "}
+                <Link to="/settings" className="underline underline-offset-2">
+                  update cookie in Settings
+                </Link>
+              </div>
+            ) : item.extractionFailed ? (
               <div className="flex items-center gap-1 text-xs text-amber-600">
                 <AlertCircle className="h-3.5 w-3.5" />
                 Extraction failed
               </div>
-            )}
+            ) : null}
             {item.fileType === "image" && (
               <span className="text-xs text-muted-foreground">(no text extracted)</span>
             )}

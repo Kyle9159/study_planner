@@ -27,6 +27,18 @@ export function useAddYouTubeMaterialMutation(courseId: string) {
   });
 }
 
+export function useAddWebpageMaterialMutation(courseId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (url: string) => api.addWebpageMaterial(courseId, url),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.courses.detail(courseId) });
+      toast.success("WGU page content extracted");
+    },
+    onError: (err) => toast.error(`Failed: ${err.message}`),
+  });
+}
+
 export function useDeleteMaterialMutation(courseId: string) {
   const qc = useQueryClient();
   return useMutation({
@@ -58,6 +70,18 @@ export function useAddYouTubeRubricMutation(courseId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.courses.detail(courseId) });
       toast.success("YouTube transcript added as rubric");
+    },
+    onError: (err) => toast.error(`Failed: ${err.message}`),
+  });
+}
+
+export function useAddWebpageRubricMutation(courseId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (url: string) => api.addWebpageRubric(courseId, url),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.courses.detail(courseId) });
+      toast.success("WGU page content extracted as rubric");
     },
     onError: (err) => toast.error(`Failed: ${err.message}`),
   });

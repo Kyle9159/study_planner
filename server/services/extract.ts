@@ -1,5 +1,5 @@
 /**
- * Text extraction service — PDF, DOCX, TXT, YouTube.
+ * Text extraction service — PDF, DOCX, TXT, YouTube, WGU web pages.
  */
 
 import { readFile } from "node:fs/promises";
@@ -52,14 +52,56 @@ export async function extractYouTube(url: string): Promise<string> {
     .trim();
 }
 
+export async function extractWebpage(url: string, sessionCookie: string): Promise<string> {
+  const response = await fetch(url, {
+    headers: {
+      Cookie: sessionCookie,
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    },
+  });
+
+  if (response.status === 401 || response.status === 403) {
+    throw new Error("WGU session expired — update your cookie in Settings.");
+  }
+  if (!response.ok) {
+    throw new Error(`Failed to fetch page (HTTP ${response.status})`);
+  }
+
+  const html = await response.text();
+  const { load } = await import("cheerio");
+  const $ = load(html);
+
+  // Remove noise elements
+  $("script, style, nav, header, footer, .skip-link, noscript, iframe").remove();
+
+  // Try course content containers first, fall back to body
+  const container = $(".course-content, main, [role='main'], article").first();
+  const text = (container.length ? container : $("body")).text();
+
+  // Collapse whitespace
+  return text
+    .replace(/\t/g, " ")
+    .replace(/[ ]{2,}/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
 export async function extractText(
   fileType: FileType,
   filePath: string | null,
   url: string | null,
+  extra?: { wguCookie?: string },
 ): Promise<string | null> {
   try {
     if (fileType === "youtube" && url) {
       return await extractYouTube(url);
+    }
+    if (fileType === "webpage" && url) {
+      if (!extra?.wguCookie) {
+        throw new Error("WGU session cookie not configured. Add it in Settings.");
+      }
+      return await extractWebpage(url, extra.wguCookie);
     }
     if (!filePath) return null;
     if (fileType === "pdf") return await extractPdf(filePath);

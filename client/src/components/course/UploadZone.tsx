@@ -1,4 +1,4 @@
-import { Upload, Link as LinkIcon, Loader2, Plus } from "lucide-react";
+import { Globe, Upload, Link as LinkIcon, Loader2, Plus } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,7 @@ function detectFileType(file: File): FileType {
 interface UploadZoneProps {
   onFile: (formData: FormData) => Promise<void>;
   onYouTube: (url: string) => Promise<void>;
+  onWebpage: (url: string) => Promise<void>;
   isUploading?: boolean;
   label?: string;
 }
@@ -36,12 +37,15 @@ interface UploadZoneProps {
 export const UploadZone: React.FC<UploadZoneProps> = ({
   onFile,
   onYouTube,
+  onWebpage,
   isUploading,
   label = "Upload files",
 }) => {
   const [dragging, setDragging] = useState(false);
   const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [wguUrl, setWguUrl] = useState("");
   const [addingYoutube, setAddingYoutube] = useState(false);
+  const [addingWgu, setAddingWgu] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFiles = useCallback(
@@ -79,6 +83,21 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
       setYoutubeUrl("");
     } finally {
       setAddingYoutube(false);
+    }
+  };
+
+  const handleAddWgu = async () => {
+    const trimmed = wguUrl.trim();
+    if (!trimmed || !trimmed.startsWith("https://")) {
+      alert("Please enter a valid https:// URL");
+      return;
+    }
+    setAddingWgu(true);
+    try {
+      await onWebpage(trimmed);
+      setWguUrl("");
+    } finally {
+      setAddingWgu(false);
     }
   };
 
@@ -148,6 +167,36 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
           disabled={!youtubeUrl.trim() || addingYoutube || isUploading}
         >
           {addingYoutube ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Plus className="h-4 w-4" />
+          )}
+          Add
+        </Button>
+      </div>
+
+      {/* WGU course page URL input */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Globe className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={wguUrl}
+            onChange={(e) => setWguUrl(e.target.value)}
+            placeholder="WGU course page URL (requires cookie in Settings)"
+            className="pl-8"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleAddWgu();
+            }}
+            disabled={addingWgu || isUploading}
+          />
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleAddWgu}
+          disabled={!wguUrl.trim() || addingWgu || isUploading}
+        >
+          {addingWgu ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <Plus className="h-4 w-4" />
