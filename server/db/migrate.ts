@@ -143,6 +143,37 @@ const migrations = [
     sqlite.exec(`DROP TABLE _rubrics_old`);
     sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_rubrics_course_id ON rubrics(course_id)`);
   },
+
+  `CREATE TABLE IF NOT EXISTS project_sections (
+    id TEXT PRIMARY KEY,
+    course_id TEXT NOT NULL,
+    section_index INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    rubric_text TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'drafting', 'complete')),
+    draft_content TEXT,
+    guidance TEXT,
+    material_excerpts TEXT,
+    model TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+  )`,
+
+  `CREATE INDEX IF NOT EXISTS idx_project_sections_course_id ON project_sections(course_id)`,
+
+  `CREATE TABLE IF NOT EXISTS project_chat_messages (
+    id TEXT PRIMARY KEY,
+    course_id TEXT NOT NULL,
+    role TEXT NOT NULL CHECK(role IN ('user', 'assistant')),
+    content TEXT NOT NULL,
+    section_id TEXT,
+    model TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+  )`,
+
+  `CREATE INDEX IF NOT EXISTS idx_project_chat_course_id ON project_chat_messages(course_id)`,
 ];
 
 console.log("Running database migrations...");

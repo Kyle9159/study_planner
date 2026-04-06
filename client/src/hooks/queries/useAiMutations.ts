@@ -27,3 +27,15 @@ export function useGenerateProjectGuideMutation(courseId: string) {
     onError: (err) => toast.error(`Generation failed: ${err.message}`),
   });
 }
+
+export function useGenerateStudyNotesMutation(courseId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ model }: { model: string }) => api.generateStudyNotes(courseId, model),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.courses.detail(courseId) });
+      toast.success("Study notes generated");
+    },
+    onError: (err) => toast.error(`Notes generation failed: ${err.message}`),
+  });
+}

@@ -49,6 +49,7 @@ export const SettingsPage: React.FC = () => {
   const updateMutation = useUpdateSettingsMutation();
 
   const [xaiKey, setXaiKey] = useState("");
+  const [anthropicKey, setAnthropicKey] = useState("");
   const [githubToken, setGithubToken] = useState("");
   const [wguCookie, setWguCookie] = useState("");
   const [defaultModel, setDefaultModel] = useState("");
@@ -57,6 +58,12 @@ export const SettingsPage: React.FC = () => {
     if (!xaiKey.trim()) return;
     updateMutation.mutate({ xaiApiKey: xaiKey.trim() });
     setXaiKey("");
+  };
+
+  const handleSaveAnthropic = () => {
+    if (!anthropicKey.trim()) return;
+    updateMutation.mutate({ anthropicApiKey: anthropicKey.trim() });
+    setAnthropicKey("");
   };
 
   const handleSaveGithub = () => {
@@ -71,6 +78,7 @@ export const SettingsPage: React.FC = () => {
   };
 
   const handleClearXai = () => updateMutation.mutate({ xaiApiKey: "" });
+  const handleClearAnthropic = () => updateMutation.mutate({ anthropicApiKey: "" });
   const handleClearGithub = () => updateMutation.mutate({ githubToken: "" });
 
   const handleSaveWguCookie = () => {
@@ -142,6 +150,59 @@ export const SettingsPage: React.FC = () => {
                     variant="outline"
                     size="sm"
                     onClick={handleClearXai}
+                    disabled={updateMutation.isPending}
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </SectionCard>
+
+        {/* Anthropic */}
+        <SectionCard
+          title="Anthropic API Key"
+          description="For Claude models (api.anthropic.com)"
+        >
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-muted-foreground">Status:</span>
+              {settings?.anthropicApiKey ? (
+                <span className="text-emerald-600 font-medium">Configured</span>
+              ) : (
+                <span className="text-muted-foreground">Not configured</span>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <div className="flex-1 space-y-1">
+                <Label htmlFor="anthropicKey">New API Key</Label>
+                <MaskedInput
+                  id="anthropicKey"
+                  value={anthropicKey}
+                  onChange={setAnthropicKey}
+                  placeholder="sk-ant-..."
+                  disabled={updateMutation.isPending}
+                />
+              </div>
+              <div className="flex items-end gap-2">
+                <Button
+                  onClick={handleSaveAnthropic}
+                  disabled={!anthropicKey.trim() || updateMutation.isPending}
+                  size="sm"
+                >
+                  {updateMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  Save
+                </Button>
+                {settings?.anthropicApiKey && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleClearAnthropic}
                     disabled={updateMutation.isPending}
                   >
                     Clear
@@ -230,10 +291,10 @@ export const SettingsPage: React.FC = () => {
                   How to find your session cookie
                 </AccordionTrigger>
                 <AccordionContent className="text-xs text-muted-foreground space-y-1 pb-2">
-                  <p><strong>Chrome / Edge:</strong> F12 → Application → Cookies → apps.cgp-oex.wgu.edu → copy the <code className="font-mono bg-muted/60 rounded px-1">sessionid</code> value</p>
-                  <p><strong>Firefox:</strong> F12 → Storage → Cookies → copy <code className="font-mono bg-muted/60 rounded px-1">sessionid</code></p>
-                  <p><strong>Safari:</strong> Develop → Show Web Inspector → Storage → Cookies</p>
-                  <p className="pt-1">Paste the full cookie string (e.g. <code className="font-mono bg-muted/60 rounded px-1">sessionid=abc123...</code>) below. The cookie expires when you log out of WGU.</p>
+                  <p><strong>1.</strong> Log into WGU and navigate to any course page</p>
+                  <p><strong>2.</strong> F12 → Application tab → Cookies → <code className="font-mono bg-muted/60 rounded px-1">cgp-oex.wgu.edu</code> (not the apps. subdomain)</p>
+                  <p><strong>3.</strong> Find the <code className="font-mono bg-muted/60 rounded px-1">sessionid</code> row and copy its <strong>Value</strong></p>
+                  <p className="pt-1">Paste the value below. This cookie expires after ~24 hours or when you log out.</p>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>

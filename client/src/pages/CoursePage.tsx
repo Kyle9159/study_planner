@@ -9,6 +9,7 @@ import {
   Layers,
   Loader2,
   MoreVertical,
+  PenLine,
   Sparkles,
   Trash2,
 } from "lucide-react";
@@ -51,8 +52,9 @@ import { EmptyState, PageHeader, PageMain, SectionCard } from "@/components/layo
 import { GuidePanel } from "@/components/course/GuidePanel";
 import { MaterialList } from "@/components/course/MaterialList";
 import { UploadZone } from "@/components/course/UploadZone";
+import { CompleteProject } from "@/components/course/CompleteProject";
 import { useCourse, useDeleteCourseMutation, useUpdateCourseMutation } from "@/hooks/queries/useCourseQueries";
-import { useGenerateProjectGuideMutation, useGenerateStudyGuideMutation } from "@/hooks/queries/useAiMutations";
+import { useGenerateProjectGuideMutation, useGenerateStudyGuideMutation, useGenerateStudyNotesMutation } from "@/hooks/queries/useAiMutations";
 import {
   useAddYouTubeMaterialMutation,
   useAddYouTubeRubricMutation,
@@ -60,6 +62,7 @@ import {
   useAddWebpageRubricMutation,
   useDeleteMaterialMutation,
   useDeleteRubricMutation,
+  useParseWguSectionsMutation,
   useUploadMaterialMutation,
   useUploadRubricMutation,
 } from "@/hooks/queries/useUploadMutations";
@@ -98,6 +101,8 @@ export const CoursePage: React.FC = () => {
   const deleteRubric = useDeleteRubricMutation(id!);
   const generateStudy = useGenerateStudyGuideMutation(id!);
   const generateProject = useGenerateProjectGuideMutation(id!);
+  const generateNotes = useGenerateStudyNotesMutation(id!);
+  const parseWguSections = useParseWguSectionsMutation(id!);
 
   const editForm = useForm<EditFormData>({
     resolver: zodResolver(editSchema),
@@ -206,6 +211,10 @@ export const CoursePage: React.FC = () => {
               <ClipboardList className="h-4 w-4" />
               Project Guide
             </TabsTrigger>
+            <TabsTrigger value="complete-project">
+              <PenLine className="h-4 w-4" />
+              Complete Project
+            </TabsTrigger>
           </TabsList>
 
           {/* Overview */}
@@ -274,6 +283,8 @@ export const CoursePage: React.FC = () => {
                   items={course.materials}
                   onDelete={(materialId) => deleteMaterial.mutate(materialId)}
                   deletingId={deleteMaterial.isPending ? undefined : undefined}
+                  onParseWebpage={(url) => parseWguSections.mutate(url)}
+                  parsingUrl={parseWguSections.isPending ? parseWguSections.variables : undefined}
                   emptyText="No study materials yet — upload files or add a YouTube link above"
                 />
               </div>
@@ -324,6 +335,9 @@ export const CoursePage: React.FC = () => {
                 guideType="study"
                 defaultModel={settings?.defaultModel ?? undefined}
                 courseName={course.name}
+                courseId={id!}
+                onGenerateNotes={(model) => generateNotes.mutate({ model })}
+                isGeneratingNotes={generateNotes.isPending}
               />
             </SectionCard>
           </TabsContent>
@@ -341,6 +355,19 @@ export const CoursePage: React.FC = () => {
                 guideType="project"
                 defaultModel={settings?.defaultModel ?? undefined}
                 courseName={course.name}
+              />
+            </SectionCard>
+          </TabsContent>
+
+          {/* Complete Project */}
+          <TabsContent value="complete-project" className="mt-4">
+            <SectionCard
+              title="Complete Project"
+              description="AI-powered section-by-section project assistant with chat and Word export"
+            >
+              <CompleteProject
+                course={course}
+                defaultModel={settings?.defaultModel ?? undefined}
               />
             </SectionCard>
           </TabsContent>

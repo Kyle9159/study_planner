@@ -114,3 +114,45 @@ export type NewRubric = typeof rubrics.$inferInsert;
 export type StudyGuide = typeof studyGuides.$inferSelect;
 export type ProjectGuide = typeof projectGuides.$inferSelect;
 export type Setting = typeof settings.$inferSelect;
+
+export const projectSections = sqliteTable("project_sections", {
+  id: text("id").primaryKey(),
+  courseId: text("course_id")
+    .notNull()
+    .references(() => courses.id, { onDelete: "cascade" }),
+  sectionIndex: integer("section_index").notNull(),
+  title: text("title").notNull(),
+  rubricText: text("rubric_text").notNull(),
+  status: text("status", {
+    enum: ["pending", "drafting", "complete"],
+  })
+    .notNull()
+    .default("pending"),
+  draftContent: text("draft_content"),
+  guidance: text("guidance"),
+  materialExcerpts: text("material_excerpts"),
+  model: text("model"),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+export const projectChatMessages = sqliteTable("project_chat_messages", {
+  id: text("id").primaryKey(),
+  courseId: text("course_id")
+    .notNull()
+    .references(() => courses.id, { onDelete: "cascade" }),
+  role: text("role", { enum: ["user", "assistant"] }).notNull(),
+  content: text("content").notNull(),
+  sectionId: text("section_id"),
+  model: text("model"),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+export type ProjectSection = typeof projectSections.$inferSelect;
+export type ProjectChatMessage = typeof projectChatMessages.$inferSelect;

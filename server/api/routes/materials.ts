@@ -1,12 +1,14 @@
 import { existsSync, mkdirSync, unlinkSync } from "node:fs";
+import { writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Router } from "express";
 import multer from "multer";
 import { eq } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
+import { Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
 import { db, schema } from "../../db/index.js";
-import { extractText } from "../../services/extract.js";
+import { crawlWguCourse, extractText, extractReferenceUrls, extractPublicWebpage } from "../../services/extract.js";
 import type { FileType } from "@shared/types";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -296,5 +298,126 @@ materialsRouter.delete("/:id/rubrics/:rubricId", async (req, res) => {
     res.json({ ok: true, data: null });
   } catch (err) {
     res.status(500).json({ ok: false, error: String(err) });
+  }
+});
+
+// ─── WGU Section Parser ──────────────────────────────────────────────────────
+
+async function buildCourseDocx(
+  sections: { title: string; text: string }[],
+  courseTitle: string,
+): Promise<Buffer> {
+  const doc = new Document({
+    sections: [
+      {
+        children: [
+          new Paragraph({ text: courseTitle, heading: HeadingLevel.TITLE }),
+          ...sections.flatMap((s) => [
+            new Paragraph({ text: s.title, heading: HeadingLevel.HEADING_1 }),
+            ...s.text
+              .split("\n\n")
+              .filter(Boolean)
+              .map((chunk) => new Paragraph({ children: [new TextRun({ text: chunk })] })),
+          ]),
+        ],
+      },
+    ],
+  });
+  return Buffer.from(await Packer.toBuffer(doc));
+}
+
+materialsRouter.post("/:id/wgu-parse", async (req, res, next) => {
+  try {
+    const courseId = req.params.id;
+    const { url } = req.body as { url?: string };
+
+    if (!url) {
+      res.status(400).json({ ok: false, error: "url is required" });
+      return;
+    }
+
+    const cookieRow = await db
+      .select()
+      .from(schema.settings)
+      .where(eq(schema.settings.key, "wguSessionCookie"))
+      .get();
+    const cookie = cookieRow?.value ?? null;
+
+    if (!cookie) {
+      res
+        .status(400)
+        .json({ ok: false, error: "WGU session cookie not configured. Add it in Settings." });
+      return;
+    }
+
+    const { sections, courseTitle } = await crawlWguCourse(url, cookie);
+
+    const buffer = await buildCourseDocx(sections, courseTitle);
+    const uploadDir = getUploadDir(courseId);
+    const filename = `${createId()}-wgu-parsed.docx`;
+    const filePath = join(uploadDir, filename);
+    await writeFile(filePath, buffer);
+
+    const extractedText = sections.map((s) => `# ${s.title}\n\n${s.text}`).join("\n\n---\n\n");
+
+    const id = createId();
+    const row = {
+      id,
+      courseId,
+      filename,
+      originalName: `WGU Parsed: ${courseTitle} (${sections.length} sections)`,
+      filePath,
+      fileType: "docx" as FileType,
+      extractedText,
+      extractionFailed: false,
+      url: null,
+    };
+
+    await db.insert(schema.materials).values(row);
+
+    // ── Extract and fetch reference URLs from course content ──
+    const referenceUrls = extractReferenceUrls(extractedText);
+    console.log("[WGU parse] Found", referenceUrls.length, "reference URLs to fetch");
+
+    let refsFetched = 0;
+    let refsFailed = 0;
+    for (const refUrl of referenceUrls) {
+      await new Promise((r) => setTimeout(r, 500)); // Rate limit
+      try {
+        const refText = await extractPublicWebpage(refUrl);
+        if (refText.length < 100) {
+          refsFailed++;
+          continue;
+        }
+        const refId = createId();
+        await db.insert(schema.materials).values({
+          id: refId,
+          courseId,
+          filename: refUrl,
+          originalName: `Reference: ${new URL(refUrl).hostname} — ${refUrl.split("/").pop()?.replace(/-/g, " ") ?? refUrl}`,
+          filePath: null,
+          fileType: "webpage" as FileType,
+          extractedText: refText,
+          extractionFailed: false,
+          url: refUrl,
+        });
+        refsFetched++;
+      } catch (err) {
+        refsFailed++;
+        console.log("[WGU parse] Failed to fetch reference:", refUrl, err instanceof Error ? err.message : err);
+      }
+    }
+    console.log("[WGU parse] References: fetched=%d, failed=%d", refsFetched, refsFailed);
+
+    const material = await db
+      .select()
+      .from(schema.materials)
+      .where(eq(schema.materials.id, id))
+      .get();
+
+    res.status(201).json({ ok: true, data: material, refsAdded: refsFetched });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ ok: false, error: message });
   }
 });

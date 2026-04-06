@@ -64,28 +64,41 @@ coursesRouter.get("/:id", async (req, res) => {
       return;
     }
 
-    const [materials, rubrics, studyGuide, projectGuide] = await Promise.all([
-      db
-        .select()
-        .from(schema.materials)
-        .where(eq(schema.materials.courseId, course.id))
-        .orderBy(schema.materials.createdAt),
-      db
-        .select()
-        .from(schema.rubrics)
-        .where(eq(schema.rubrics.courseId, course.id))
-        .orderBy(schema.rubrics.createdAt),
-      db
-        .select()
-        .from(schema.studyGuides)
-        .where(eq(schema.studyGuides.courseId, course.id))
-        .get(),
-      db
-        .select()
-        .from(schema.projectGuides)
-        .where(eq(schema.projectGuides.courseId, course.id))
-        .get(),
-    ]);
+    const materials = await db
+      .select()
+      .from(schema.materials)
+      .where(eq(schema.materials.courseId, course.id))
+      .orderBy(schema.materials.createdAt);
+
+    const rubrics = await db
+      .select()
+      .from(schema.rubrics)
+      .where(eq(schema.rubrics.courseId, course.id))
+      .orderBy(schema.rubrics.createdAt);
+
+    const studyGuide = await db
+      .select()
+      .from(schema.studyGuides)
+      .where(eq(schema.studyGuides.courseId, course.id))
+      .get();
+
+    const projectGuide = await db
+      .select()
+      .from(schema.projectGuides)
+      .where(eq(schema.projectGuides.courseId, course.id))
+      .get();
+
+    const projectSections = await db
+      .select()
+      .from(schema.projectSections)
+      .where(eq(schema.projectSections.courseId, course.id))
+      .orderBy(schema.projectSections.sectionIndex);
+
+    const projectChatMessages = await db
+      .select()
+      .from(schema.projectChatMessages)
+      .where(eq(schema.projectChatMessages.courseId, course.id))
+      .orderBy(schema.projectChatMessages.createdAt);
 
     const detail = {
       ...course,
@@ -97,6 +110,8 @@ coursesRouter.get("/:id", async (req, res) => {
       projectGuide: projectGuide
         ? { ...projectGuide, wasTruncated: !!projectGuide.wasTruncated }
         : null,
+      projectSections,
+      projectChatMessages,
     };
 
     res.json({ ok: true, data: detail });

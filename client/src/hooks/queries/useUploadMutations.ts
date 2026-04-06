@@ -87,6 +87,18 @@ export function useAddWebpageRubricMutation(courseId: string) {
   });
 }
 
+export function useParseWguSectionsMutation(courseId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (url: string) => api.parseWguSections(courseId, url),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.courses.detail(courseId) });
+      toast.success("Course sections parsed — Word document added to Materials");
+    },
+    onError: (err) => toast.error(`Parse failed: ${err.message}`),
+  });
+}
+
 export function useDeleteRubricMutation(courseId: string) {
   const qc = useQueryClient();
   return useMutation({

@@ -4,7 +4,7 @@
 
 export type FileType = "pdf" | "docx" | "txt" | "image" | "youtube" | "webpage";
 
-export type Provider = "xai" | "github";
+export type Provider = "xai" | "github" | "anthropic";
 
 export const XAI_MODELS = [
   "grok-4-1-fast-reasoning",
@@ -22,9 +22,16 @@ export const GITHUB_MODELS = [
   "gemini-3-1-pro",
 ] as const;
 
+export const CLAUDE_MODELS = [
+  "claude-opus-4-6",
+  "claude-sonnet-4-6",
+  "claude-haiku-3-5-20241022",
+] as const;
+
 export type XaiModel = (typeof XAI_MODELS)[number];
 export type GithubModel = (typeof GITHUB_MODELS)[number];
-export type ModelId = XaiModel | GithubModel;
+export type ClaudeModel = (typeof CLAUDE_MODELS)[number];
+export type ModelId = XaiModel | GithubModel | ClaudeModel;
 
 export type Course = {
   id: string;
@@ -67,14 +74,24 @@ export type Rubric = {
 export type MaterialExcerpt = {
   sourceName: string;
   excerpt: string;
+  sourceType?: "study" | "rubric"; // optional — backwards compatible with existing stored guides
 };
+
+export type KeyPoint = {
+  text: string;
+  notes?: string;
+};
+
+export function normalizeKeyPoint(kp: string | KeyPoint): KeyPoint {
+  return typeof kp === "string" ? { text: kp } : kp;
+}
 
 export type StudySubject = {
   id: string;
   title: string;
   priority: "High" | "Medium" | "Low";
   summary: string;
-  keyPoints: string[];
+  keyPoints: (string | KeyPoint)[];
   materialExcerpts: MaterialExcerpt[];
   searchQueries: string[];
 };
@@ -96,9 +113,35 @@ export type StudyGuide = {
 
 export type ProjectGuide = StudyGuide;
 
+export type ProjectSection = {
+  id: string;
+  courseId: string;
+  sectionIndex: number;
+  title: string;
+  rubricText: string;
+  status: "pending" | "drafting" | "complete";
+  draftContent: string | null;
+  guidance: string | null;
+  materialExcerpts: string | null;
+  model: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ProjectChatMessage = {
+  id: string;
+  courseId: string;
+  role: "user" | "assistant";
+  content: string;
+  sectionId: string | null;
+  model: string | null;
+  createdAt: string;
+};
+
 export type AppSettings = {
   xaiApiKey: string | null;
   githubToken: string | null;
+  anthropicApiKey: string | null;
   defaultModel: string | null;
   wguSessionCookie: string | null;
 };
@@ -108,6 +151,8 @@ export type CourseDetail = Course & {
   rubrics: Rubric[];
   studyGuide: StudyGuide | null;
   projectGuide: ProjectGuide | null;
+  projectSections: ProjectSection[];
+  projectChatMessages: ProjectChatMessage[];
 };
 
 export type CourseSummary = Course & {

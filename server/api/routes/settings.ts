@@ -4,7 +4,7 @@ import { db, schema } from "../../db/index.js";
 
 export const settingsRouter = Router();
 
-const SETTINGS_KEYS = ["xaiApiKey", "githubToken", "defaultModel", "wguSessionCookie"] as const;
+const SETTINGS_KEYS = ["xaiApiKey", "githubToken", "anthropicApiKey", "defaultModel", "wguSessionCookie"] as const;
 
 settingsRouter.get("/", async (_req, res) => {
   try {
@@ -17,6 +17,7 @@ settingsRouter.get("/", async (_req, res) => {
       data: {
         xaiApiKey: map.xaiApiKey ? "configured" : null,
         githubToken: map.githubToken ? "configured" : null,
+        anthropicApiKey: map.anthropicApiKey ? "configured" : null,
         defaultModel: map.defaultModel ?? null,
         wguSessionCookie: map.wguSessionCookie ? "configured" : null,
       },
@@ -66,6 +67,7 @@ settingsRouter.put("/", async (req, res) => {
       data: {
         xaiApiKey: map.xaiApiKey ? "configured" : null,
         githubToken: map.githubToken ? "configured" : null,
+        anthropicApiKey: map.anthropicApiKey ? "configured" : null,
         defaultModel: map.defaultModel ?? null,
       },
     });

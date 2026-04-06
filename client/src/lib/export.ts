@@ -3,6 +3,7 @@
  */
 
 import type { ProjectGuide, StructuredStudyGuide, StudyGuide } from "@shared/types";
+import { normalizeKeyPoint } from "@shared/types";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -44,7 +45,11 @@ function structuredToMarkdown(parsed: StructuredStudyGuide, courseName: string):
     lines.push("", subject.summary, "");
     lines.push("**Key Points:**");
     for (const pt of subject.keyPoints) {
-      lines.push(`- ${pt}`);
+      const kp = normalizeKeyPoint(pt);
+      lines.push(`- ${kp.text}`);
+      if (kp.notes) {
+        lines.push(`  > ${kp.notes}`);
+      }
     }
     if (subject.materialExcerpts.length > 0) {
       lines.push("", "**From your materials:**");
@@ -120,13 +125,23 @@ export function exportPdf(guide: StudyGuide | ProjectGuide, courseName: string) 
         writeLine(subject.summary, 9, "normal", "#555555");
         y += 1;
         for (const pt of subject.keyPoints) {
+          const kp = normalizeKeyPoint(pt);
           checkPage(6);
           doc.setFontSize(9);
           doc.setFont("helvetica", "normal");
           doc.setTextColor("#111111");
-          const lines = doc.splitTextToSize(`• ${pt}`, contentWidth - 4) as string[];
+          const lines = doc.splitTextToSize(`• ${kp.text}`, contentWidth - 4) as string[];
           doc.text(lines, margin + 2, y);
           y += lines.length * 3.8 + 1;
+          if (kp.notes) {
+            checkPage(10);
+            doc.setFontSize(8);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor("#555555");
+            const noteLines = doc.splitTextToSize(kp.notes, contentWidth - 10) as string[];
+            doc.text(noteLines, margin + 6, y);
+            y += noteLines.length * 3.4 + 1;
+          }
         }
         y += 2;
       });
@@ -156,12 +171,14 @@ export function exportAnkiCsv(guide: StudyGuide, courseName: string) {
   const rows: string[] = [];
   for (const subject of parsed.subjects) {
     for (const keyPoint of subject.keyPoints) {
-      const front = keyPoint;
+      const kp = normalizeKeyPoint(keyPoint);
+      const front = kp.text;
+      const notesSection = kp.notes ? `\n\nNotes: ${kp.notes}` : "";
       const excerptNote =
         subject.materialExcerpts[0]
           ? `\n\nSource: ${subject.materialExcerpts[0].sourceName} — "${subject.materialExcerpts[0].excerpt}"`
           : "";
-      const back = `${subject.title} [${subject.priority} Priority]\n\n${subject.summary}${excerptNote}`;
+      const back = `${subject.title} [${subject.priority} Priority]\n\n${subject.summary}${notesSection}${excerptNote}`;
       // Anki tab-separated format: front\tback
       rows.push(`${front}\t${back}`);
     }

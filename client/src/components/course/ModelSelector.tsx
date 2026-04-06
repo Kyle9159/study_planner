@@ -10,8 +10,18 @@ const MODEL_GROUPS = [
   {
     label: "xAI",
     models: [
+      { id: "grok-4.20-0309-reasoning", name: "Grok 4.2 (Reasoning)" },
+      { id: "grok-4.20-0309-non-reasoning", name: "Grok 4.2" },
       { id: "grok-4-1-fast-reasoning", name: "Grok 4.1 Fast (Reasoning)" },
       { id: "grok-4-1-fast-non-reasoning", name: "Grok 4.1 Fast" },
+    ],
+  },
+  {
+    label: "Anthropic",
+    models: [
+      { id: "claude-opus-4-6", name: "Claude Opus 4.6" },
+      { id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6" },
+      { id: "claude-haiku-3-5-20241022", name: "Claude 3.5 Haiku" },
     ],
   },
   {

@@ -4,6 +4,7 @@ import {
   ChevronDown,
   ChevronUp,
   ExternalLink,
+  FileCheck,
   GraduationCap,
   RotateCcw,
   Search,
@@ -15,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { StructuredStudyGuide, StudySubject } from "@shared/types";
+import { normalizeKeyPoint } from "@shared/types";
 
 // ─── mastery persistence ─────────────────────────────────────────────────────
 
@@ -118,12 +120,14 @@ const PRIORITY_STYLES: Record<
 
 // ─── sub-components ──────────────────────────────────────────────────────────
 
-function ExcerptBlock({ sourceName, excerpt }: { sourceName: string; excerpt: string }) {
+function ExcerptBlock({ sourceName, excerpt, sourceType }: { sourceName: string; excerpt: string; sourceType?: "study" | "rubric" }) {
+  const isRubric = sourceType === "rubric";
   return (
-    <div className="rounded-lg border border-border/60 bg-muted/30 p-3">
-      <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-        <BookOpen className="h-3 w-3 shrink-0" />
+    <div className={`rounded-lg border bg-muted/30 p-3 ${isRubric ? "border-amber-300/60 dark:border-amber-700/40" : "border-border/60"}`}>
+      <p className={`mb-1.5 flex items-center gap-1.5 text-xs font-medium ${isRubric ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>
+        {isRubric ? <FileCheck className="h-3 w-3 shrink-0" /> : <BookOpen className="h-3 w-3 shrink-0" />}
         {sourceName}
+        {isRubric && <span className="ml-auto rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] dark:bg-amber-900/30">Rubric</span>}
       </p>
       <p className="text-xs leading-relaxed text-foreground/80 italic">
         &ldquo;{excerpt}&rdquo;
@@ -192,8 +196,8 @@ function SubjectCard({
   const [excerptOpen, setExcerptOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const styles = PRIORITY_STYLES[subject.priority];
-  const hasExcerpts = subject.materialExcerpts.length > 0;
-  const hasSearches = subject.searchQueries.length > 0;
+  const hasExcerpts = (subject.materialExcerpts?.length ?? 0) > 0;
+  const hasSearches = (subject.searchQueries?.length ?? 0) > 0;
 
   return (
     <div
@@ -230,19 +234,31 @@ function SubjectCard({
       {/* Key points with checkboxes */}
       <div className="px-4 pb-3">
         <ul className="space-y-2">
-          {subject.keyPoints.map((pt, i) => (
-            <li key={i} className="flex items-start gap-2">
-              <Checkbox
-                checked={isKeyPointMastered(i)}
-                onCheckedChange={() => onToggleKeyPoint(i)}
-                className="mt-0.5 shrink-0"
-                aria-label={`Mark key point as done: ${pt}`}
-              />
-              <span className={`text-sm leading-snug ${isKeyPointMastered(i) ? "line-through text-muted-foreground" : ""}`}>
-                {pt}
-              </span>
-            </li>
-          ))}
+          {(subject.keyPoints ?? []).map((pt, i) => {
+            const kp = normalizeKeyPoint(pt);
+            return (
+              <li key={i}>
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    checked={isKeyPointMastered(i)}
+                    onCheckedChange={() => onToggleKeyPoint(i)}
+                    className="mt-0.5 shrink-0"
+                    aria-label={`Mark key point as done: ${kp.text}`}
+                  />
+                  <span className={`text-sm leading-snug ${isKeyPointMastered(i) ? "line-through text-muted-foreground" : ""}`}>
+                    {kp.text}
+                  </span>
+                </div>
+                {kp.notes && (
+                  <div className="ml-8 mt-1.5 rounded-lg border border-border/40 bg-muted/30 p-3">
+                    <div className="text-xs leading-relaxed text-foreground/80 prose prose-xs dark:prose-invert max-w-none [&_ul]:mt-1 [&_ul]:mb-1 [&_li]:my-0.5">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{kp.notes}</ReactMarkdown>
+                    </div>
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ul>
       </div>
 
@@ -264,8 +280,8 @@ function SubjectCard({
           </button>
           {excerptOpen && (
             <div className="space-y-2 px-4 pb-3">
-              {subject.materialExcerpts.map((ex, i) => (
-                <ExcerptBlock key={i} sourceName={ex.sourceName} excerpt={ex.excerpt} />
+              {(subject.materialExcerpts ?? []).map((ex, i) => (
+                <ExcerptBlock key={i} sourceName={ex.sourceName} excerpt={ex.excerpt} sourceType={ex.sourceType} />
               ))}
             </div>
           )}
@@ -290,7 +306,7 @@ function SubjectCard({
           </button>
           {searchOpen && (
             <div className="space-y-2.5 px-4 pb-3">
-              {subject.searchQueries.map((q, i) => (
+              {(subject.searchQueries ?? []).map((q, i) => (
                 <SearchRow key={i} query={q} />
               ))}
             </div>
@@ -299,6 +315,63 @@ function SubjectCard({
       )}
     </div>
   );
+}
+
+// ─── JSON repair for truncated responses ─────────────────────────────────────
+
+/**
+ * Attempt to repair truncated JSON from an AI response that was cut off
+ * mid-stream (e.g. due to max_tokens). Uses a stack-based approach to
+ * close any unclosed strings, arrays, and objects.
+ */
+function tryRepairTruncatedJson(raw: string): StructuredStudyGuide | null {
+  let str = raw.trim();
+  if (!str.startsWith("{") || !str.includes('"subjects"')) return null;
+
+  let inString = false;
+  const stack: string[] = [];
+
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i];
+    if (ch === "\\" && inString) {
+      i++; // skip escaped char
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (ch === "{") stack.push("}");
+    else if (ch === "[") stack.push("]");
+    else if (ch === "}" || ch === "]") stack.pop();
+  }
+
+  // Close unclosed string
+  if (inString) str += '"';
+
+  // Strip trailing comma before closing delimiters
+  str = str.replace(/,\s*$/, "");
+
+  // Close unclosed brackets/braces in reverse nesting order
+  while (stack.length > 0) {
+    str += stack.pop();
+  }
+
+  try {
+    const candidate = JSON.parse(str) as unknown;
+    if (
+      candidate &&
+      typeof candidate === "object" &&
+      "subjects" in candidate &&
+      Array.isArray((candidate as StructuredStudyGuide).subjects)
+    ) {
+      return candidate as StructuredStudyGuide;
+    }
+  } catch {
+    // repair wasn't enough
+  }
+  return null;
 }
 
 // ─── main renderer ────────────────────────────────────────────────────────────
@@ -313,8 +386,8 @@ export const StudyGuideRenderer: React.FC<StudyGuideRendererProps> = ({ content,
 
   // Try to parse as structured JSON
   let parsed: StructuredStudyGuide | null = null;
+  const cleaned = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
   try {
-    const cleaned = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
     const candidate = JSON.parse(cleaned) as unknown;
     if (
       candidate &&
@@ -325,7 +398,8 @@ export const StudyGuideRenderer: React.FC<StudyGuideRendererProps> = ({ content,
       parsed = candidate as StructuredStudyGuide;
     }
   } catch {
-    // not JSON — fall through to markdown
+    // JSON.parse failed — try repairing truncated JSON
+    parsed = tryRepairTruncatedJson(cleaned);
   }
 
   // Fallback: render as markdown

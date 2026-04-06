@@ -1,5 +1,6 @@
 import {
   AlertTriangle,
+  BookOpenText,
   Check,
   ChevronDown,
   Copy,
@@ -10,7 +11,7 @@ import {
   RefreshCw,
   Sparkles,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -36,11 +37,46 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { EmptyState } from "@/components/layout";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ModelSelector } from "./ModelSelector";
 import { StudyGuideRenderer } from "./StudyGuideRenderer";
 import { exportAnkiCsv, exportMarkdown, exportPdf } from "@/lib/export";
 import { copyTextToClipboard, formatDateTime, formatRelativeTime } from "@/lib/utils";
-import type { ProjectGuide, StudyGuide } from "@shared/types";
+import type { ProjectGuide, StudyGuide, StructuredStudyGuide } from "@shared/types";
+import { normalizeKeyPoint } from "@shared/types";
+import { exportStudyGuideDocx } from "@/api/client";
+
+type TaskGuide = { label: string; guide: string };
+
+/** Try to parse project guide content as per-task JSON structure */
+function parseTaskGuides(content: string): TaskGuide[] | null {
+  try {
+    const cleaned = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
+    const parsed = JSON.parse(cleaned) as { tasks?: TaskGuide[] };
+    if (Array.isArray(parsed?.tasks) && parsed.tasks.length > 0 && parsed.tasks[0].guide) {
+      return parsed.tasks;
+    }
+  } catch {
+    // Not JSON — plain markdown (legacy guide)
+  }
+  return null;
+}
+
+function guideHasNotes(guide: StudyGuide | ProjectGuide): boolean {
+  try {
+    const cleaned = guide.content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
+    const parsed = JSON.parse(cleaned) as StructuredStudyGuide;
+    if (!parsed?.subjects) return false;
+    return parsed.subjects.some((s) =>
+      s.keyPoints?.some((kp) => {
+        const n = normalizeKeyPoint(kp);
+        return !!n.notes;
+      }),
+    );
+  } catch {
+    return false;
+  }
+}
 
 interface GuidePanelProps {
   guide: StudyGuide | ProjectGuide | null;
@@ -49,6 +85,9 @@ interface GuidePanelProps {
   guideType: "study" | "project";
   defaultModel?: string;
   courseName?: string;
+  courseId?: string;
+  onGenerateNotes?: (model: string) => void;
+  isGeneratingNotes?: boolean;
 }
 
 export const GuidePanel: React.FC<GuidePanelProps> = ({
@@ -58,6 +97,9 @@ export const GuidePanel: React.FC<GuidePanelProps> = ({
   guideType,
   defaultModel,
   courseName = "guide",
+  courseId,
+  onGenerateNotes,
+  isGeneratingNotes,
 }) => {
   const [selectedModel, setSelectedModel] = useState(
     guide?.model ?? defaultModel ?? "",
@@ -66,6 +108,12 @@ export const GuidePanel: React.FC<GuidePanelProps> = ({
   const [minimalPass, setMinimalPass] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const pendingModel = useRef<string>("");
+
+  // Parse task-structured project guides for tabbed display
+  const taskGuides = useMemo(() => {
+    if (guideType !== "project" || !guide?.content) return null;
+    return parseTaskGuides(guide.content);
+  }, [guideType, guide?.content]);
 
   const handleGenerate = () => {
     if (!selectedModel) return;
@@ -176,8 +224,55 @@ export const GuidePanel: React.FC<GuidePanelProps> = ({
                     <span className="ml-auto text-xs text-muted-foreground">Study only</span>
                   )}
                 </DropdownMenuItem>
+                {guideType === "study" && courseId && (
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      try {
+                        const blob = await exportStudyGuideDocx(courseId);
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = `${courseName}-study-guide.docx`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      } catch (err) {
+                        console.error("DOCX export failed:", err);
+                      }
+                    }}
+                  >
+                    <FileDown className="h-4 w-4" />
+                    Word Document (.docx)
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* Generate Study Notes button — study guides only */}
+            {guideType === "study" && onGenerateNotes && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onGenerateNotes(selectedModel)}
+                disabled={!selectedModel || isGeneratingNotes || isGenerating}
+              >
+                {isGeneratingNotes ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Generating Notes...
+                  </>
+                ) : guideHasNotes(guide) ? (
+                  <>
+                    <BookOpenText className="h-4 w-4" />
+                    Regenerate Notes
+                  </>
+                ) : (
+                  <>
+                    <BookOpenText className="h-4 w-4" />
+                    Generate Study Notes
+                  </>
+                )}
+              </Button>
+            )}
           </>
         )}
       </div>
@@ -214,6 +309,27 @@ export const GuidePanel: React.FC<GuidePanelProps> = ({
           )}
           {guideType === "study" ? (
             <StudyGuideRenderer content={guide.content} guideId={guide.id} />
+          ) : taskGuides && taskGuides.length > 1 ? (
+            <Tabs defaultValue={taskGuides[0].label} className="w-full">
+              <TabsList className="w-full justify-start">
+                {taskGuides.map((t) => (
+                  <TabsTrigger key={t.label} value={t.label}>
+                    {t.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+              {taskGuides.map((t) => (
+                <TabsContent key={t.label} value={t.label} className="mt-4">
+                  <div className="markdown-body">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{t.guide}</ReactMarkdown>
+                  </div>
+                </TabsContent>
+              ))}
+            </Tabs>
+          ) : taskGuides && taskGuides.length === 1 ? (
+            <div className="markdown-body">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{taskGuides[0].guide}</ReactMarkdown>
+            </div>
           ) : (
             <div className="markdown-body">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{guide.content}</ReactMarkdown>

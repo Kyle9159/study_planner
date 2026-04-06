@@ -4,7 +4,9 @@ import {
   ChevronRight,
   FileImage,
   FileText,
+  FolderOpen,
   Globe,
+  Loader2,
   Trash2,
   Youtube,
 } from "lucide-react";
@@ -39,9 +41,11 @@ interface MaterialItemProps {
   item: Item;
   onDelete: (id: string) => void;
   isDeleting?: boolean;
+  onParseWebpage?: (url: string) => void;
+  isParsing?: boolean;
 }
 
-const MaterialItem: React.FC<MaterialItemProps> = ({ item, onDelete, isDeleting }) => {
+const MaterialItem: React.FC<MaterialItemProps> = ({ item, onDelete, isDeleting, onParseWebpage, isParsing }) => {
   const [expanded, setExpanded] = useState(false);
   const Icon = FILE_TYPE_ICONS[item.fileType] ?? FileText;
   const hasText = !!item.extractedText;
@@ -76,6 +80,28 @@ const MaterialItem: React.FC<MaterialItemProps> = ({ item, onDelete, isDeleting 
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          {item.fileType === "webpage" && item.url && onParseWebpage && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 text-xs gap-1"
+              onClick={() => onParseWebpage(item.url!)}
+              disabled={isParsing}
+              title="Crawl all sections and generate a Word document"
+            >
+              {isParsing ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Parsing...
+                </>
+              ) : (
+                <>
+                  <FolderOpen className="h-3 w-3" />
+                  Parse Sections
+                </>
+              )}
+            </Button>
+          )}
           {hasText && (
             <Button
               variant="ghost"
@@ -120,6 +146,8 @@ interface MaterialListProps {
   onDelete: (id: string) => void;
   deletingId?: string;
   emptyText?: string;
+  onParseWebpage?: (url: string) => void;
+  parsingUrl?: string;
 }
 
 export const MaterialList: React.FC<MaterialListProps> = ({
@@ -127,6 +155,8 @@ export const MaterialList: React.FC<MaterialListProps> = ({
   onDelete,
   deletingId,
   emptyText = "No files uploaded yet",
+  onParseWebpage,
+  parsingUrl,
 }) => {
   if (items.length === 0) {
     return (
@@ -142,6 +172,8 @@ export const MaterialList: React.FC<MaterialListProps> = ({
           item={item}
           onDelete={onDelete}
           isDeleting={deletingId === item.id}
+          onParseWebpage={onParseWebpage}
+          isParsing={!!parsingUrl && item.fileType === "webpage" && item.url === parsingUrl}
         />
       ))}
     </div>

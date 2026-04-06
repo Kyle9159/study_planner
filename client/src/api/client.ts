@@ -11,6 +11,8 @@ import type {
   Rubric,
   StudyGuide,
   ProjectGuide,
+  ProjectSection,
+  ProjectChatMessage,
 } from "@shared/types";
 
 const API_BASE = "/api";
@@ -130,8 +132,88 @@ export const generateProjectGuide = (courseId: string, model: string) =>
     body: JSON.stringify({ model }),
   });
 
+export const generateStudyNotes = (courseId: string, model: string) =>
+  fetchApi<StudyGuide>(`/courses/${courseId}/generate-study-notes`, {
+    method: "POST",
+    body: JSON.stringify({ model }),
+  });
+
+export const exportStudyGuideDocx = async (courseId: string): Promise<Blob> => {
+  const response = await fetch(`${API_BASE}/courses/${courseId}/study-guide/export-docx`, {
+    method: "POST",
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ error: "Export failed" }));
+    throw new Error((err as { error?: string }).error || "Export failed");
+  }
+  return response.blob();
+};
+
 // Settings
 export const getSettings = () => fetchApi<AppSettings>("/settings");
 
-export const updateSettings = (data: Partial<AppSettings & { xaiApiKey: string; githubToken: string; wguSessionCookie: string }>) =>
+export const updateSettings = (data: Partial<AppSettings & { xaiApiKey: string; githubToken: string; anthropicApiKey: string; wguSessionCookie: string }>) =>
   fetchApi<AppSettings>("/settings", { method: "PUT", body: JSON.stringify(data) });
+
+// WGU Section Parser
+export const parseWguSections = (courseId: string, url: string) =>
+  fetchApi<Material>(`/courses/${courseId}/wgu-parse`, {
+    method: "POST",
+    body: JSON.stringify({ url }),
+  });
+
+// Complete Project
+export const parseRubricSections = (courseId: string, model: string, force = false) =>
+  fetchApi<ProjectSection[]>(`/courses/${courseId}/project-sections/parse`, {
+    method: "POST",
+    body: JSON.stringify({ model, force }),
+  });
+
+export const getProjectSections = (courseId: string) =>
+  fetchApi<ProjectSection[]>(`/courses/${courseId}/project-sections`);
+
+export const generateSectionDraft = (courseId: string, sectionId: string, model: string) =>
+  fetchApi<ProjectSection>(`/courses/${courseId}/project-sections/${sectionId}/generate`, {
+    method: "POST",
+    body: JSON.stringify({ model }),
+  });
+
+export const updateSection = (
+  courseId: string,
+  sectionId: string,
+  data: { draftContent?: string; status?: "pending" | "drafting" | "complete" },
+) =>
+  fetchApi<ProjectSection>(`/courses/${courseId}/project-sections/${sectionId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+
+export const sendChatMessage = (
+  courseId: string,
+  message: string,
+  model: string,
+  sectionId?: string,
+) =>
+  fetchApi<ProjectChatMessage>(`/courses/${courseId}/project-chat`, {
+    method: "POST",
+    body: JSON.stringify({ message, model, sectionId }),
+  });
+
+export const getChatHistory = (courseId: string) =>
+  fetchApi<ProjectChatMessage[]>(`/courses/${courseId}/project-chat`);
+
+export const clearChat = (courseId: string) =>
+  fetchApi<null>(`/courses/${courseId}/project-chat`, { method: "DELETE" });
+
+export const exportProjectDocument = async (courseId: string, tasks?: string[]): Promise<Blob> => {
+  const response = await fetch(`${API_BASE}/courses/${courseId}/project-sections/export`, {
+    method: "POST",
+    headers: tasks?.length ? { "Content-Type": "application/json" } : {},
+    body: tasks?.length ? JSON.stringify({ tasks }) : undefined,
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ error: "Export failed" }));
+    throw new Error((err as { error?: string }).error || "Export failed");
+  }
+  return response.blob();
+};
