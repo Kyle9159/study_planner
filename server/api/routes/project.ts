@@ -212,8 +212,9 @@ projectRouter.post(
 projectRouter.put("/:id/project-sections/:sectionId", async (req, res) => {
   try {
     const { sectionId } = req.params;
-    const { draftContent, status } = req.body as {
+    const { draftContent, codeContent, status } = req.body as {
       draftContent?: string;
+      codeContent?: string;
       status?: "pending" | "drafting" | "complete";
     };
 
@@ -221,6 +222,7 @@ projectRouter.put("/:id/project-sections/:sectionId", async (req, res) => {
       .update(schema.projectSections)
       .set({
         ...(draftContent !== undefined ? { draftContent } : {}),
+        ...(codeContent !== undefined ? { codeContent } : {}),
         ...(status !== undefined ? { status } : {}),
         updatedAt: new Date().toISOString(),
       })

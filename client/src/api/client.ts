@@ -181,7 +181,7 @@ export const generateSectionDraft = (courseId: string, sectionId: string, model:
 export const updateSection = (
   courseId: string,
   sectionId: string,
-  data: { draftContent?: string; status?: "pending" | "drafting" | "complete" },
+  data: { draftContent?: string; codeContent?: string; status?: "pending" | "drafting" | "complete" },
 ) =>
   fetchApi<ProjectSection>(`/courses/${courseId}/project-sections/${sectionId}`, {
     method: "PUT",

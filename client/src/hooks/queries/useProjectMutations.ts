@@ -37,7 +37,7 @@ export function useUpdateSectionMutation(courseId: string) {
       data,
     }: {
       sectionId: string;
-      data: { draftContent?: string; status?: "pending" | "drafting" | "complete" };
+      data: { draftContent?: string; codeContent?: string; status?: "pending" | "drafting" | "complete" };
     }) => api.updateSection(courseId, sectionId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.courses.detail(courseId) });

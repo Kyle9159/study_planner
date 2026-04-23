@@ -162,6 +162,9 @@ const migrations = [
 
   `CREATE INDEX IF NOT EXISTS idx_project_sections_course_id ON project_sections(course_id)`,
 
+  // Add code_content column to project_sections (safe to re-run — duplicate column ignored)
+  `ALTER TABLE project_sections ADD COLUMN code_content TEXT`,
+
   `CREATE TABLE IF NOT EXISTS project_chat_messages (
     id TEXT PRIMARY KEY,
     course_id TEXT NOT NULL,

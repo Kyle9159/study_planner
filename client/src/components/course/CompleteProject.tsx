@@ -79,6 +79,13 @@ export const CompleteProject: React.FC<CompleteProjectProps> = ({
     });
   };
 
+  const handleUpdateCode = (sectionId: string, content: string) => {
+    updateSection.mutate({
+      sectionId,
+      data: { codeContent: content },
+    });
+  };
+
   const handleToggleComplete = (sectionId: string, currentStatus: string) => {
     updateSection.mutate({
       sectionId,
@@ -179,6 +186,7 @@ export const CompleteProject: React.FC<CompleteProjectProps> = ({
                     generatingSectionId={generateDraft.isPending ? (generateDraft.variables?.sectionId ?? null) : null}
                     onGenerate={handleGenerateDraft}
                     onUpdateDraft={handleUpdateDraft}
+                    onUpdateCode={handleUpdateCode}
                     onToggleComplete={handleToggleComplete}
                     updatingSectionId={updateSection.isPending ? (updateSection.variables?.sectionId ?? null) : null}
                   />
@@ -208,6 +216,7 @@ export const CompleteProject: React.FC<CompleteProjectProps> = ({
             generatingSectionId={generateDraft.isPending ? (generateDraft.variables?.sectionId ?? null) : null}
             onGenerate={handleGenerateDraft}
             onUpdateDraft={handleUpdateDraft}
+            onUpdateCode={handleUpdateCode}
             onToggleComplete={handleToggleComplete}
             updatingSectionId={updateSection.isPending ? (updateSection.variables?.sectionId ?? null) : null}
           />

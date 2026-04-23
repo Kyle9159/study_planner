@@ -7,6 +7,7 @@ interface ProjectSectionListProps {
   generatingSectionId: string | null;
   onGenerate: (sectionId: string) => void;
   onUpdateDraft: (sectionId: string, content: string) => void;
+  onUpdateCode: (sectionId: string, content: string) => void;
   onToggleComplete: (sectionId: string, currentStatus: string) => void;
   updatingSectionId: string | null;
 }
@@ -16,6 +17,7 @@ export const ProjectSectionList: React.FC<ProjectSectionListProps> = ({
   generatingSectionId,
   onGenerate,
   onUpdateDraft,
+  onUpdateCode,
   onToggleComplete,
   updatingSectionId,
 }) => {
@@ -49,6 +51,7 @@ export const ProjectSectionList: React.FC<ProjectSectionListProps> = ({
           isGenerating={generatingSectionId === section.id}
           onGenerate={() => onGenerate(section.id)}
           onUpdateDraft={(content) => onUpdateDraft(section.id, content)}
+          onUpdateCode={(content) => onUpdateCode(section.id, content)}
           onToggleComplete={() => onToggleComplete(section.id, section.status)}
           isUpdating={updatingSectionId === section.id}
         />

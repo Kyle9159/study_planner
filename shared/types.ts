@@ -121,6 +121,7 @@ export type ProjectSection = {
   rubricText: string;
   status: "pending" | "drafting" | "complete";
   draftContent: string | null;
+  codeContent: string | null;
   guidance: string | null;
   materialExcerpts: string | null;
   model: string | null;

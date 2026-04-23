@@ -129,6 +129,7 @@ export const projectSections = sqliteTable("project_sections", {
     .notNull()
     .default("pending"),
   draftContent: text("draft_content"),
+  codeContent: text("code_content"),
   guidance: text("guidance"),
   materialExcerpts: text("material_excerpts"),
   model: text("model"),

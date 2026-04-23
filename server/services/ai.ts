@@ -386,7 +386,7 @@ Using the provided course materials, write a comprehensive draft response that d
 
 Return ONLY valid JSON — no markdown code fences:
 {
-  "draftContent": "The full draft text addressing this rubric requirement. Write it as if the student is submitting it. Use proper academic tone. Be thorough and specific, referencing concepts from the course materials.",
+  "draftContent": "The full draft text addressing this rubric requirement. Use markdown formatting: headings (##, ###), bold (**term**), bullet/numbered lists, code blocks (\`\`\`), and inline code (\`) where appropriate. Write it as if the student is submitting it. Use proper academic tone. Be thorough and specific, referencing concepts from the course materials.",
   "guidance": "2-4 bullet points of practical tips: what to emphasize, common pitfalls to avoid, how to strengthen the response.",
   "materialExcerpts": [
     {
@@ -398,6 +398,7 @@ Return ONLY valid JSON — no markdown code fences:
 
 Rules:
 - draftContent should be substantive (300-800 words) and directly address the rubric criteria
+- Use markdown formatting in draftContent: section headings, bold key terms, bullet/numbered lists for multi-part answers, code blocks for any code or config examples
 - Reference specific concepts, definitions, and examples from the course materials
 - guidance should be actionable and specific to this requirement
 - Include 2-4 material excerpts that are most relevant`;
