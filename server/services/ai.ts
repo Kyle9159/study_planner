@@ -9,6 +9,7 @@ import type { CourseDetail, StructuredStudyGuide, KeyPoint } from "@shared/types
 import { truncateText, cleanExtractedText } from "./extract.js";
 
 const GAB_BASE_URL = "https://gab.ai/v1";
+const XAI_BASE_URL = "https://api.x.ai/v1";
 
 const MAX_CHARS_PER_FILE = 30_000;
 const MAX_MATERIAL_CHARS = 150_000;
@@ -69,7 +70,20 @@ async function getSetting(key: string): Promise<string | null> {
   return row?.value ?? null;
 }
 
-async function getAiClient(): Promise<OpenAI> {
+function resolveProviderModel(modelId: string): { provider: "gab" | "xai"; model: string } {
+  if (modelId.startsWith("xai/")) {
+    return { provider: "xai", model: modelId.slice(4) };
+  }
+  return { provider: "gab", model: modelId };
+}
+
+async function getAiClient(provider: "gab" | "xai"): Promise<OpenAI> {
+  if (provider === "xai") {
+    const apiKey = await getSetting("xaiApiKey");
+    if (!apiKey) throw new Error("xAI API key not configured. Add it in Settings.");
+    return new OpenAI({ apiKey, baseURL: XAI_BASE_URL });
+  }
+
   const apiKey = await getSetting("gabApiKey");
   if (!apiKey) throw new Error("Gab API key not configured. Add it in Settings.");
   return new OpenAI({ apiKey, baseURL: GAB_BASE_URL });
@@ -87,7 +101,8 @@ async function callCompletion(opts: {
   timeoutMs?: number;
 }): Promise<string> {
   const { modelId, systemPrompt, temperature = 0.3, timeoutMs = 300_000 } = opts;
-  const client = await getAiClient();
+  const resolved = resolveProviderModel(modelId);
+  const client = await getAiClient(resolved.provider);
 
   const chatMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     { role: "system", content: systemPrompt },
@@ -107,7 +122,7 @@ async function callCompletion(opts: {
     try {
       const completion = await client.chat.completions.create(
         {
-          model: modelId,
+          model: resolved.model,
           messages: chatMessages,
           temperature,
         },

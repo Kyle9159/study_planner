@@ -117,6 +117,7 @@ export type ProjectChatMessage = {
 
 export type AppSettings = {
   gabApiKey: string | null;
+  xaiApiKey: string | null;
   defaultModel: string | null;
   wguSessionCookie: string | null;
 };

@@ -5,7 +5,7 @@ import { listAvailableGabModels } from "../../services/ai.js";
 
 export const settingsRouter = Router();
 
-const SETTINGS_KEYS = ["gabApiKey", "defaultModel", "wguSessionCookie"] as const;
+const SETTINGS_KEYS = ["gabApiKey", "xaiApiKey", "defaultModel", "wguSessionCookie"] as const;
 
 settingsRouter.get("/", async (_req, res) => {
   try {
@@ -17,6 +17,7 @@ settingsRouter.get("/", async (_req, res) => {
       ok: true,
       data: {
         gabApiKey: map.gabApiKey ? "configured" : null,
+        xaiApiKey: map.xaiApiKey ? "configured" : null,
         defaultModel: map.defaultModel ?? null,
         wguSessionCookie: map.wguSessionCookie ? "configured" : null,
       },
@@ -65,6 +66,7 @@ settingsRouter.put("/", async (req, res) => {
       ok: true,
       data: {
         gabApiKey: map.gabApiKey ? "configured" : null,
+        xaiApiKey: map.xaiApiKey ? "configured" : null,
         defaultModel: map.defaultModel ?? null,
         wguSessionCookie: map.wguSessionCookie ? "configured" : null,
       },

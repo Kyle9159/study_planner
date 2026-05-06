@@ -49,6 +49,7 @@ export const SettingsPage: React.FC = () => {
   const updateMutation = useUpdateSettingsMutation();
 
   const [gabKey, setGabKey] = useState("");
+  const [xaiKey, setXaiKey] = useState("");
   const [wguCookie, setWguCookie] = useState("");
   const [defaultModel, setDefaultModel] = useState("");
 
@@ -58,12 +59,19 @@ export const SettingsPage: React.FC = () => {
     setGabKey("");
   };
 
+  const handleSaveXai = () => {
+    if (!xaiKey.trim()) return;
+    updateMutation.mutate({ xaiApiKey: xaiKey.trim() });
+    setXaiKey("");
+  };
+
   const handleSaveDefaultModel = () => {
     if (!defaultModel) return;
     updateMutation.mutate({ defaultModel });
   };
 
   const handleClearGab = () => updateMutation.mutate({ gabApiKey: "" });
+  const handleClearXai = () => updateMutation.mutate({ xaiApiKey: "" });
 
   const handleSaveWguCookie = () => {
     if (!wguCookie.trim()) return;
@@ -91,6 +99,59 @@ export const SettingsPage: React.FC = () => {
     <>
       <PageHeader icon={Settings} title="Settings" subtitle="Configure Gab AI access and defaults" />
       <PageMain className="max-w-2xl space-y-4">
+        {/* xAI */}
+        <SectionCard
+          title="xAI API Key"
+          description="Used for direct xAI models (api.x.ai)"
+        >
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-muted-foreground">Status:</span>
+              {settings?.xaiApiKey ? (
+                <span className="text-emerald-600 font-medium">Configured</span>
+              ) : (
+                <span className="text-muted-foreground">Not configured</span>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <div className="flex-1 space-y-1">
+                <Label htmlFor="xaiKey">New API Key</Label>
+                <MaskedInput
+                  id="xaiKey"
+                  value={xaiKey}
+                  onChange={setXaiKey}
+                  placeholder="xai-..."
+                  disabled={updateMutation.isPending}
+                />
+              </div>
+              <div className="flex items-end gap-2">
+                <Button
+                  onClick={handleSaveXai}
+                  disabled={!xaiKey.trim() || updateMutation.isPending}
+                  size="sm"
+                >
+                  {updateMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  Save
+                </Button>
+                {settings?.xaiApiKey && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleClearXai}
+                    disabled={updateMutation.isPending}
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </SectionCard>
+
         {/* Gab AI */}
         <SectionCard
           title="Gab API Key"
