@@ -10,12 +10,20 @@ export function useSettings() {
   });
 }
 
+export function useAvailableModels() {
+  return useQuery({
+    queryKey: queryKeys.settings.models(),
+    queryFn: api.getAvailableModels,
+  });
+}
+
 export function useUpdateSettingsMutation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: api.updateSettings,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.settings.current() });
+      qc.invalidateQueries({ queryKey: queryKeys.settings.models() });
       toast.success("Settings saved");
     },
     onError: (err) => toast.error(err.message),

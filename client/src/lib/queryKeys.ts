@@ -7,5 +7,6 @@ export const queryKeys = {
   settings: {
     all: ["settings"] as const,
     current: () => [...queryKeys.settings.all, "current"] as const,
+    models: () => [...queryKeys.settings.all, "models"] as const,
   },
 } as const;

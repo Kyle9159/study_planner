@@ -38,8 +38,8 @@ Export any guide in multiple formats:
 ### Regeneration Guard
 Clicking Regenerate on an existing guide shows a confirmation dialog with "Last generated X ago" so you don't accidentally waste API credits.
 
-### Multi-Provider AI
-Works with xAI (Grok) and GitHub Models (GPT-4o, Claude, Gemini, and more). Choose any supported model per generation with a configurable default.
+### Unified AI via Gab
+Connect one gab.ai API key and use any model currently available to your account. Model lists are loaded dynamically from the API, and you can still choose a per-request model with a configurable default.
 
 ---
 
@@ -67,7 +67,7 @@ Works with xAI (Grok) and GitHub Models (GPT-4o, Claude, Gemini, and more). Choo
 ### Prerequisites
 
 - Node.js 20+ (via [nvm](https://github.com/nvm-sh/nvm) recommended)
-- An xAI API key **or** a GitHub Personal Access Token (for AI features)
+- A gab.ai API key (for AI features)
 
 ### Installation
 
@@ -85,12 +85,13 @@ The app will be available at `http://localhost:5173`. The Express API runs on po
 
 ## Configuration
 
-Open **Settings** in the app to configure your AI provider:
+Open **Settings** in the app to configure AI access:
 
-### xAI (Grok models)
+### Gab AI API
 
-1. Get an API key from [x.ai](https://x.ai)
-2. Paste it into the **xAI API Key** field in Settings
+1. Generate an API key from your [gab.ai](https://gab.ai) account
+2. Paste it into the **Gab API Key** field in Settings
+3. Model selectors across the app will automatically load available models from `https://gab.ai/v1/models`
 
 ### WGU Course Pages (Session Cookie)
 
@@ -107,20 +108,11 @@ Once configured, paste any WGU course page URL into the **WGU Course URL** input
 
 
 
-1. Go to [github.com/settings/tokens](https://github.com/settings/tokens)
-2. Generate a new token (classic) — no special scopes required
-3. Paste it into the **GitHub Token** field in Settings
-
-> GitHub Models provides free access to a wide range of models including GPT-4o, GPT-4o mini, Claude Sonnet, Gemini, and Grok through an OpenAI-compatible API.
-
 ---
 
 ## Supported Models
 
-| Provider | Models |
-|---|---|
-| xAI | `grok-4-1-fast-reasoning`, `grok-4-1-fast-non-reasoning` |
-| GitHub Models | `gpt-4o`, `gpt-4o-mini`, `grok-4-1-fast-reasoning`, `grok-4-1-fast-non-reasoning`, `grok-code-fast-1`, `claude-sonnet-4-6`, `gpt-5.4`, `gemini-3-1-pro` |
+Models are no longer hardcoded in the app. The selector shows all models returned by your gab.ai API access at runtime.
 
 ---
 

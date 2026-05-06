@@ -1,29 +1,14 @@
 /**
- * AI generation service — xAI, GitHub Models, and Anthropic Claude via OpenAI-compatible API.
+ * AI generation service via gab.ai OpenAI-compatible API.
  */
 
 import OpenAI from "openai";
-import Anthropic from "@anthropic-ai/sdk";
 import { eq } from "drizzle-orm";
 import { db, schema } from "../db/index.js";
 import type { CourseDetail, StructuredStudyGuide, KeyPoint } from "@shared/types";
 import { truncateText, cleanExtractedText } from "./extract.js";
 
-const XAI_BASE_URL = "https://api.x.ai/v1";
-const GITHUB_MODELS_BASE_URL = "https://models.inference.ai.azure.com";
-
-const XAI_MODEL_IDS = new Set([
-  "grok-4.20-0309-reasoning",
-  "grok-4.20-0309-non-reasoning",
-  "grok-4-1-fast-reasoning",
-  "grok-4-1-fast-non-reasoning",
-]);
-
-const CLAUDE_MODEL_IDS = new Set([
-  "claude-opus-4-6",
-  "claude-sonnet-4-6",
-  "claude-haiku-3-5-20241022",
-]);
+const GAB_BASE_URL = "https://gab.ai/v1";
 
 const MAX_CHARS_PER_FILE = 30_000;
 const MAX_MATERIAL_CHARS = 150_000;
@@ -84,33 +69,14 @@ async function getSetting(key: string): Promise<string | null> {
   return row?.value ?? null;
 }
 
-function getProvider(modelId: string): "xai" | "github" | "anthropic" {
-  if (CLAUDE_MODEL_IDS.has(modelId)) return "anthropic";
-  return XAI_MODEL_IDS.has(modelId) ? "xai" : "github";
-}
-
-async function getAiClient(modelId: string): Promise<OpenAI> {
-  const provider = getProvider(modelId);
-
-  if (provider === "anthropic") {
-    // Not used for Claude — callCompletion handles it directly
-    throw new Error("Use callCompletion() for Anthropic models");
-  }
-
-  if (provider === "xai") {
-    const apiKey = await getSetting("xaiApiKey");
-    if (!apiKey) throw new Error("xAI API key not configured. Add it in Settings.");
-    return new OpenAI({ apiKey, baseURL: XAI_BASE_URL });
-  } else {
-    const token = await getSetting("githubToken");
-    if (!token) throw new Error("GitHub token not configured. Add it in Settings.");
-    return new OpenAI({ apiKey: token, baseURL: GITHUB_MODELS_BASE_URL });
-  }
+async function getAiClient(): Promise<OpenAI> {
+  const apiKey = await getSetting("gabApiKey");
+  if (!apiKey) throw new Error("Gab API key not configured. Add it in Settings.");
+  return new OpenAI({ apiKey, baseURL: GAB_BASE_URL });
 }
 
 /**
- * Unified completion helper — routes to OpenAI-compatible SDK or Anthropic SDK
- * based on the model provider.
+ * Unified completion helper using gab.ai OpenAI-compatible API.
  */
 async function callCompletion(opts: {
   modelId: string;
@@ -121,55 +87,7 @@ async function callCompletion(opts: {
   timeoutMs?: number;
 }): Promise<string> {
   const { modelId, systemPrompt, temperature = 0.3, timeoutMs = 300_000 } = opts;
-  const provider = getProvider(modelId);
-
-  if (provider === "anthropic") {
-    const apiKey = await getSetting("anthropicApiKey");
-    if (!apiKey) throw new Error("Anthropic API key not configured. Add it in Settings.");
-    const client = new Anthropic({ apiKey });
-
-    const messages: Anthropic.MessageParam[] = opts.messages
-      ? opts.messages.map((m) => ({ role: m.role, content: m.content }))
-      : [{ role: "user" as const, content: opts.userMessage }];
-
-    // Retry with exponential backoff for transient Anthropic errors (overloaded, rate limit)
-    const MAX_RETRIES = 3;
-    let lastError: unknown;
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        // Use streaming to avoid Anthropic's 10-minute non-streaming limit
-        const stream = client.messages.stream(
-          {
-            model: modelId,
-            max_tokens: 32768,
-            system: systemPrompt,
-            messages,
-            temperature,
-          },
-          { timeout: timeoutMs },
-        );
-
-        const response = await stream.finalMessage();
-        const textBlock = response.content.find((b) => b.type === "text");
-        if (!textBlock || textBlock.type !== "text") throw new Error("AI returned an empty response.");
-        return textBlock.text;
-      } catch (err) {
-        lastError = err;
-        const isApiError = err instanceof Anthropic.APIError &&
-          (err.status === 529 || err.status === 429 || err.status === 503);
-        const isOverloadedMsg = err instanceof Error &&
-          /overloaded/i.test(err.message);
-        const isRetryable = isApiError || isOverloadedMsg;
-        if (!isRetryable || attempt === MAX_RETRIES) throw err;
-        const delay = 2000 * 2 ** attempt; // 2s, 4s, 8s
-        await new Promise((r) => setTimeout(r, delay));
-      }
-    }
-    throw lastError;
-  }
-
-  // OpenAI-compatible path (xAI / GitHub Models)
-  const client = await getAiClient(modelId);
+  const client = await getAiClient();
 
   const chatMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     { role: "system", content: systemPrompt },
@@ -183,18 +101,34 @@ async function callCompletion(opts: {
     chatMessages.push({ role: "user", content: opts.userMessage });
   }
 
-  const completion = await client.chat.completions.create(
-    {
-      model: modelId,
-      messages: chatMessages,
-      temperature,
-    },
-    { signal: AbortSignal.timeout(timeoutMs) },
-  );
+  const MAX_RETRIES = 3;
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const completion = await client.chat.completions.create(
+        {
+          model: modelId,
+          messages: chatMessages,
+          temperature,
+        },
+        { signal: AbortSignal.timeout(timeoutMs) },
+      );
 
-  const content = completion.choices[0]?.message?.content;
-  if (!content) throw new Error("AI returned an empty response. Please try again.");
-  return content;
+      const content = completion.choices[0]?.message?.content;
+      if (!content) throw new Error("AI returned an empty response. Please try again.");
+      return content;
+    } catch (err) {
+      lastError = err;
+      const isConnectionError = err instanceof OpenAI.APIConnectionError;
+      const isRateLimit = err instanceof OpenAI.RateLimitError;
+      const isServiceUnavailable = err instanceof OpenAI.APIError && (err.status === 503 || err.status === 529);
+      const isRetryable = isConnectionError || isRateLimit || isServiceUnavailable;
+      if (!isRetryable || attempt === MAX_RETRIES) throw err;
+      const delay = 2000 * 2 ** attempt; // 2s, 4s, 8s
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+  throw lastError;
 }
 
 function buildMaterialsContext(
@@ -442,8 +376,6 @@ export async function chatWithMaterials(
   modelId: string,
   sectionContext?: { title: string; rubricText: string } | null,
 ): Promise<string> {
-  const client = await getAiClient(modelId);
-
   const { text: materialsText } = buildMaterialsContext(course.materials, "Study Materials");
   const { text: rubricsText } = buildMaterialsContext(course.rubrics, "Rubric / Project Instructions");
   const cappedMaterials = truncateText(materialsText, MAX_MATERIAL_CHARS);
@@ -473,6 +405,38 @@ ${cappedRubrics}`;
   });
   if (!content) throw new Error("AI returned an empty response.");
   return content;
+}
+
+export type AvailableGabModel = {
+  id: string;
+  name: string;
+};
+
+function titleCaseFromId(value: string): string {
+  return value
+    .split(/[-_./]+/)
+    .map((part) => (part ? part[0].toUpperCase() + part.slice(1) : part))
+    .join(" ");
+}
+
+export async function listAvailableGabModels(): Promise<AvailableGabModel[]> {
+  const client = await getAiClient();
+  const response = await client.models.list();
+
+  const seen = new Set<string>();
+  const models: AvailableGabModel[] = [];
+
+  for (const model of response.data ?? []) {
+    if (!model?.id || seen.has(model.id)) continue;
+    seen.add(model.id);
+    models.push({
+      id: model.id,
+      name: titleCaseFromId(model.id),
+    });
+  }
+
+  models.sort((a, b) => a.name.localeCompare(b.name));
+  return models;
 }
 
 export async function generateStudyNotes(

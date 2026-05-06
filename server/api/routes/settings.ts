@@ -1,10 +1,11 @@
 import { Router } from "express";
 import { eq } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
+import { listAvailableGabModels } from "../../services/ai.js";
 
 export const settingsRouter = Router();
 
-const SETTINGS_KEYS = ["xaiApiKey", "githubToken", "anthropicApiKey", "defaultModel", "wguSessionCookie"] as const;
+const SETTINGS_KEYS = ["gabApiKey", "defaultModel", "wguSessionCookie"] as const;
 
 settingsRouter.get("/", async (_req, res) => {
   try {
@@ -15,9 +16,7 @@ settingsRouter.get("/", async (_req, res) => {
     res.json({
       ok: true,
       data: {
-        xaiApiKey: map.xaiApiKey ? "configured" : null,
-        githubToken: map.githubToken ? "configured" : null,
-        anthropicApiKey: map.anthropicApiKey ? "configured" : null,
+        gabApiKey: map.gabApiKey ? "configured" : null,
         defaultModel: map.defaultModel ?? null,
         wguSessionCookie: map.wguSessionCookie ? "configured" : null,
       },
@@ -65,13 +64,26 @@ settingsRouter.put("/", async (req, res) => {
     res.json({
       ok: true,
       data: {
-        xaiApiKey: map.xaiApiKey ? "configured" : null,
-        githubToken: map.githubToken ? "configured" : null,
-        anthropicApiKey: map.anthropicApiKey ? "configured" : null,
+        gabApiKey: map.gabApiKey ? "configured" : null,
         defaultModel: map.defaultModel ?? null,
+        wguSessionCookie: map.wguSessionCookie ? "configured" : null,
       },
     });
   } catch (err) {
     res.status(500).json({ ok: false, error: String(err) });
+  }
+});
+
+settingsRouter.get("/models", async (_req, res) => {
+  try {
+    const models = await listAvailableGabModels();
+    res.json({ ok: true, data: models });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (/not configured/i.test(message)) {
+      res.json({ ok: true, data: [] });
+      return;
+    }
+    res.status(500).json({ ok: false, error: message });
   }
 });

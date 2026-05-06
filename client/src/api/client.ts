@@ -4,6 +4,7 @@
 
 import type {
   AppSettings,
+  AvailableModel,
   CourseSummary,
   CourseDetail,
   Course,
@@ -152,8 +153,10 @@ export const exportStudyGuideDocx = async (courseId: string): Promise<Blob> => {
 // Settings
 export const getSettings = () => fetchApi<AppSettings>("/settings");
 
-export const updateSettings = (data: Partial<AppSettings & { xaiApiKey: string; githubToken: string; anthropicApiKey: string; wguSessionCookie: string }>) =>
+export const updateSettings = (data: Partial<AppSettings & { gabApiKey: string; wguSessionCookie: string }>) =>
   fetchApi<AppSettings>("/settings", { method: "PUT", body: JSON.stringify(data) });
+
+export const getAvailableModels = () => fetchApi<AvailableModel[]>("/settings/models");
 
 // WGU Section Parser
 export const parseWguSections = (courseId: string, url: string) =>

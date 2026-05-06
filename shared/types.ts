@@ -4,34 +4,10 @@
 
 export type FileType = "pdf" | "docx" | "txt" | "image" | "youtube" | "webpage";
 
-export type Provider = "xai" | "github" | "anthropic";
-
-export const XAI_MODELS = [
-  "grok-4-1-fast-reasoning",
-  "grok-4-1-fast-non-reasoning",
-] as const;
-
-export const GITHUB_MODELS = [
-  "gpt-4o",
-  "gpt-4o-mini",
-  "grok-4-1-fast-reasoning",
-  "grok-4-1-fast-non-reasoning",
-  "grok-code-fast-1",
-  "claude-sonnet-4-6",
-  "gpt-5.4",
-  "gemini-3-1-pro",
-] as const;
-
-export const CLAUDE_MODELS = [
-  "claude-opus-4-6",
-  "claude-sonnet-4-6",
-  "claude-haiku-3-5-20241022",
-] as const;
-
-export type XaiModel = (typeof XAI_MODELS)[number];
-export type GithubModel = (typeof GITHUB_MODELS)[number];
-export type ClaudeModel = (typeof CLAUDE_MODELS)[number];
-export type ModelId = XaiModel | GithubModel | ClaudeModel;
+export type AvailableModel = {
+  id: string;
+  name: string;
+};
 
 export type Course = {
   id: string;
@@ -140,9 +116,7 @@ export type ProjectChatMessage = {
 };
 
 export type AppSettings = {
-  xaiApiKey: string | null;
-  githubToken: string | null;
-  anthropicApiKey: string | null;
+  gabApiKey: string | null;
   defaultModel: string | null;
   wguSessionCookie: string | null;
 };

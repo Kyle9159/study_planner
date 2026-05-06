@@ -48,28 +48,14 @@ export const SettingsPage: React.FC = () => {
   const { data: settings, isLoading } = useSettings();
   const updateMutation = useUpdateSettingsMutation();
 
-  const [xaiKey, setXaiKey] = useState("");
-  const [anthropicKey, setAnthropicKey] = useState("");
-  const [githubToken, setGithubToken] = useState("");
+  const [gabKey, setGabKey] = useState("");
   const [wguCookie, setWguCookie] = useState("");
   const [defaultModel, setDefaultModel] = useState("");
 
-  const handleSaveXai = () => {
-    if (!xaiKey.trim()) return;
-    updateMutation.mutate({ xaiApiKey: xaiKey.trim() });
-    setXaiKey("");
-  };
-
-  const handleSaveAnthropic = () => {
-    if (!anthropicKey.trim()) return;
-    updateMutation.mutate({ anthropicApiKey: anthropicKey.trim() });
-    setAnthropicKey("");
-  };
-
-  const handleSaveGithub = () => {
-    if (!githubToken.trim()) return;
-    updateMutation.mutate({ githubToken: githubToken.trim() });
-    setGithubToken("");
+  const handleSaveGab = () => {
+    if (!gabKey.trim()) return;
+    updateMutation.mutate({ gabApiKey: gabKey.trim() });
+    setGabKey("");
   };
 
   const handleSaveDefaultModel = () => {
@@ -77,9 +63,7 @@ export const SettingsPage: React.FC = () => {
     updateMutation.mutate({ defaultModel });
   };
 
-  const handleClearXai = () => updateMutation.mutate({ xaiApiKey: "" });
-  const handleClearAnthropic = () => updateMutation.mutate({ anthropicApiKey: "" });
-  const handleClearGithub = () => updateMutation.mutate({ githubToken: "" });
+  const handleClearGab = () => updateMutation.mutate({ gabApiKey: "" });
 
   const handleSaveWguCookie = () => {
     if (!wguCookie.trim()) return;
@@ -105,148 +89,41 @@ export const SettingsPage: React.FC = () => {
 
   return (
     <>
-      <PageHeader icon={Settings} title="Settings" subtitle="Configure AI providers and defaults" />
+      <PageHeader icon={Settings} title="Settings" subtitle="Configure Gab AI access and defaults" />
       <PageMain className="max-w-2xl space-y-4">
-        {/* xAI */}
+        {/* Gab AI */}
         <SectionCard
-          title="xAI API Key"
-          description="For Grok models (api.x.ai)"
+          title="Gab API Key"
+          description="Used for all available models via gab.ai/v1"
         >
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm">
               <span className="text-muted-foreground">Status:</span>
-              {settings?.xaiApiKey ? (
-                <span className="text-emerald-600 font-medium">Configured</span>
-              ) : (
-                <span className="text-muted-foreground">Not configured</span>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <div className="flex-1 space-y-1">
-                <Label htmlFor="xaiKey">New API Key</Label>
-                <MaskedInput
-                  id="xaiKey"
-                  value={xaiKey}
-                  onChange={setXaiKey}
-                  placeholder="xai-..."
-                  disabled={updateMutation.isPending}
-                />
-              </div>
-              <div className="flex items-end gap-2">
-                <Button
-                  onClick={handleSaveXai}
-                  disabled={!xaiKey.trim() || updateMutation.isPending}
-                  size="sm"
-                >
-                  {updateMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Save className="h-4 w-4" />
-                  )}
-                  Save
-                </Button>
-                {settings?.xaiApiKey && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleClearXai}
-                    disabled={updateMutation.isPending}
-                  >
-                    Clear
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-        </SectionCard>
-
-        {/* Anthropic */}
-        <SectionCard
-          title="Anthropic API Key"
-          description="For Claude models (api.anthropic.com)"
-        >
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground">Status:</span>
-              {settings?.anthropicApiKey ? (
-                <span className="text-emerald-600 font-medium">Configured</span>
-              ) : (
-                <span className="text-muted-foreground">Not configured</span>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <div className="flex-1 space-y-1">
-                <Label htmlFor="anthropicKey">New API Key</Label>
-                <MaskedInput
-                  id="anthropicKey"
-                  value={anthropicKey}
-                  onChange={setAnthropicKey}
-                  placeholder="sk-ant-..."
-                  disabled={updateMutation.isPending}
-                />
-              </div>
-              <div className="flex items-end gap-2">
-                <Button
-                  onClick={handleSaveAnthropic}
-                  disabled={!anthropicKey.trim() || updateMutation.isPending}
-                  size="sm"
-                >
-                  {updateMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Save className="h-4 w-4" />
-                  )}
-                  Save
-                </Button>
-                {settings?.anthropicApiKey && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleClearAnthropic}
-                    disabled={updateMutation.isPending}
-                  >
-                    Clear
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-        </SectionCard>
-
-        {/* GitHub Token */}
-        <SectionCard
-          title="GitHub Token"
-          description="For GitHub Models (models.inference.ai.azure.com) — GPT-4o, Llama, Grok, and more"
-        >
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground">Status:</span>
-              {settings?.githubToken ? (
+              {settings?.gabApiKey ? (
                 <span className="text-emerald-600 font-medium">Configured</span>
               ) : (
                 <span className="text-muted-foreground">Not configured</span>
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              Create a GitHub Personal Access Token (PAT) with the{" "}
-              <code className="font-mono bg-muted/60 rounded px-1">models:read</code> scope at
-              github.com/settings/tokens
+              Add your gab.ai API key, then the model selector throughout the app will load every
+              currently available model automatically.
             </p>
             <div className="flex gap-2">
               <div className="flex-1 space-y-1">
-                <Label htmlFor="githubToken">New Token</Label>
+                <Label htmlFor="gabKey">New API Key</Label>
                 <MaskedInput
-                  id="githubToken"
-                  value={githubToken}
-                  onChange={setGithubToken}
-                  placeholder="ghp_..."
+                  id="gabKey"
+                  value={gabKey}
+                  onChange={setGabKey}
+                  placeholder="gab_..."
                   disabled={updateMutation.isPending}
                 />
               </div>
               <div className="flex items-end gap-2">
                 <Button
-                  onClick={handleSaveGithub}
-                  disabled={!githubToken.trim() || updateMutation.isPending}
+                  onClick={handleSaveGab}
+                  disabled={!gabKey.trim() || updateMutation.isPending}
                   size="sm"
                 >
                   {updateMutation.isPending ? (
@@ -256,11 +133,11 @@ export const SettingsPage: React.FC = () => {
                   )}
                   Save
                 </Button>
-                {settings?.githubToken && (
+                {settings?.gabApiKey && (
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={handleClearGithub}
+                    onClick={handleClearGab}
                     disabled={updateMutation.isPending}
                   >
                     Clear
@@ -371,19 +248,6 @@ export const SettingsPage: React.FC = () => {
               <span className="font-mono">{settings.defaultModel}</span>
             </p>
           )}
-        </SectionCard>
-
-        {/* GitHub Copilot note */}
-        <SectionCard title="GitHub Copilot (Coming Soon)">
-          <p className="text-sm text-muted-foreground">
-            GitHub Copilot doesn't use an API key — it requires the Copilot SDK (
-            <code className="font-mono text-xs bg-muted/60 rounded px-1">
-              @github/copilot-language-server
-            </code>
-            ). Support for direct Copilot integration is planned as a future enhancement.
-            In the meantime, use <strong>GitHub Models</strong> above for similar access to
-            GPT-4o and other models.
-          </p>
         </SectionCard>
       </PageMain>
     </>
